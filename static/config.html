@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>config</title>
+<style>
+body{font-family:sans-serif;margin:1rem;max-width:56rem;}
+table{border-collapse:collapse;width:100%;margin-top:0.5rem;}
+td,th{border:1px solid #ccc;padding:6px;text-align:left;vertical-align:top;}
+.thumb{max-height:48px;vertical-align:middle;}
+section{margin-bottom:2rem;}
+</style>
+</head>
+<body>
+<p><a href="/play" onclick="event.preventDefault(); window.location.replace('/play?_=' + Date.now());">← Back to game</a>
+<form method="post" action="/logout" style="display:inline;margin-left:12px;"><button type="submit">Logout</button></form>
+</p>
+<p id="flash"></p>
+
+<section>
+<h2>World background</h2>
+<p>Upload a new image. The current <code>world.png</code> or <code>world.jpg</code> is moved into <code>data/archives/world/</code>.</p>
+<form method="post" action="/config/world" enctype="multipart/form-data">
+<input type="file" name="file" accept="image/png,image/jpeg" required>
+<button type="submit">Replace background</button>
+</form>
+</section>
+
+<section>
+<h2>Character size (everyone)</h2>
+<p>Width in pixels for all player sprites on the map.</p>
+<form method="post" action="/config/sprite-size" id="size-form">
+<label>Pixels wide <input type="number" name="width" id="width-input" min="16" max="512" step="1"></label>
+<button type="submit">Save size</button>
+</form>
+</section>
+
+<section>
+<h2>Speech bubbles (everyone)</h2>
+<p>Font size for Space-bar shouts. Each user’s message is set in the table below.</p>
+<form method="post" action="/config/speech-font" id="speech-font-form">
+<label>Text size (px) <input type="number" name="font_px" id="speech-font-input" min="10" max="48" step="1"></label>
+<button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Users</h2>
+<p>Replace sprite archives the old file. <strong>Flip horizontally</strong> rewrites that user’s image file on disk (toggle to undo). Deleting removes the account.</p>
+<div id="users-box">Loading…</div>
+</section>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var flash = document.getElementById("flash");
+  if (q.get("saved") === "world") flash.textContent = "Background updated.";
+  else if (q.get("saved") === "size") flash.textContent = "Sprite size saved.";
+  else if (q.get("saved") === "speech_font") flash.textContent = "Speech bubble text size saved.";
+  else if (q.get("saved") === "greeting") flash.textContent = "Shout text saved.";
+  else if (q.get("saved") === "flip") flash.textContent = "Sprite image file updated (mirrored on disk).";
+  else if (q.get("saved") === "sprite") flash.textContent = "User sprite updated.";
+  else if (q.get("deleted") === "1") flash.textContent = "User deleted.";
+  else if (q.get("error")) {
+    var errs = {
+      world_bad_image: "Background must be PNG or JPEG.",
+      world_too_big: "Background file too large (max 2 MB).",
+      bad_width: "Invalid sprite width.",
+      bad_speech_font: "Speech text size must be between 10 and 48 px.",
+      bad_image: "Invalid image file.",
+      file_too_big: "Image too large (max 2 MB).",
+      no_user: "User not found.",
+      flip_failed: "Could not mirror that image (try PNG/JPEG/WebP).",
+      server: "Server error."
+    };
+    var code = q.get("error");
+    flash.textContent = errs[code] || ("Error: " + code);
+  }
+
+  function load() {
+    fetch("/api/config/summary", { credentials: "same-origin" })
+      .then(function (r) {
+        if (r.status === 401) {
+          location.href = "/login";
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        document.getElementById("width-input").value = data.sprite_width;
+        document.getElementById("speech-font-input").value = data.speech_font_px;
+        var box = document.getElementById("users-box");
+        var rows = data.users.map(function (u) {
+          var flipped = u.sprite_flipped;
+          return (
+            "<tr><td>" +
+            escapeHtml(u.username) +
+            " <small>(#" +
+            u.id +
+            ")</small></td>" +
+            '<td><img class="thumb" src="' +
+            escapeHtml(u.sprite_url) +
+            '" alt=""></td>' +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/greeting">' +
+            '<input type="text" name="greeting" maxlength="64" style="width:11rem" value="' +
+            escapeAttr(u.shout_greeting || "Hello!") +
+            '"> ' +
+            '<button type="submit">Save shout</button>' +
+            "</form></td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/sprite" enctype="multipart/form-data">' +
+            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+            "<button type=\"submit\">Replace sprite</button>" +
+            "</form></td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/flip-sprite">' +
+            "<button type=\"submit\">" +
+            (flipped ? "Mirror file again (undo)" : "Mirror file horizontally") +
+            "</button></form>" +
+            "<div><small>" +
+            (flipped
+              ? "Sprite file is currently mirrored on disk."
+              : "Sprite file matches upload.") +
+            "</small></div></td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/delete" onsubmit="return confirm(\'Delete user ' +
+            escapeAttr(u.username) +
+            '?\');">' +
+            '<button type="submit">Delete</button>' +
+            "</form>" +
+            "</td></tr>"
+          );
+        });
+        box.innerHTML =
+          "<table><thead><tr><th>User</th><th>Sprite</th><th>Space-bar shout</th><th>Replace</th><th>Mirror file</th><th></th></tr></thead><tbody>" +
+          rows.join("") +
+          "</tbody></table>";
+      })
+      .catch(function () {
+        document.getElementById("users-box").textContent = "Could not load users.";
+      });
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/'/g, "&#39;");
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

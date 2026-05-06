@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>login</title>
+</head>
+<body>
+<p id="msg"></p>
+
+<h2>Log in</h2>
+<form method="post" action="/login">
+<p>Username <input name="username" required maxlength="32" autocomplete="username"></p>
+<p>Password <input name="password" type="password" required autocomplete="current-password"></p>
+<p><button type="submit">Log in</button></p>
+</form>
+
+<h2>Register</h2>
+<form method="post" action="/register" enctype="multipart/form-data">
+<p>Username <input name="username" required maxlength="32" autocomplete="username"></p>
+<p>Password <input name="password" type="password" required minlength="4" autocomplete="new-password"></p>
+<p>Character picture (required) <input name="sprite" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required></p>
+<p><button type="submit">Create account</button></p>
+</form>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var err = q.get("error");
+  var ok = q.get("registered");
+  var msg = document.getElementById("msg");
+  var map = {
+    taken: "That username is already taken. Pick another.",
+    bad_login: "Wrong username or password.",
+    bad_image: "Registration image must be PNG, JPEG, GIF, or WebP.",
+    file_too_big: "Image too large (max 2 MB).",
+    weak_password: "Password must be at least 4 characters.",
+    short_name: "Username must be at least 2 characters.",
+    server: "Something went wrong. Try again."
+  };
+  if (ok) msg.textContent = "Account created. You can log in now.";
+  else if (err && map[err]) msg.textContent = map[err];
+  else if (err) msg.textContent = "Error: " + err;
+})();
+</script>
+</body>
+</html>
