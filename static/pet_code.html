@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pet code</title>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: sans-serif; }
+    #top { padding: 10px 12px; border-bottom: 1px solid #ddd; display:flex; gap:10px; align-items:center; }
+    #editor { height: calc(100% - 48px); }
+    #status { color: #555; font-size: 12px; }
+    button { padding: 6px 10px; }
+    code { background: #f6f6f6; padding: 2px 4px; border-radius: 4px; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+</head>
+<body>
+  <div id="top">
+    <a href="/config">← Back to config</a>
+    <button id="save">Save</button>
+    <span id="status">Loading…</span>
+  </div>
+  <div id="editor"></div>
+
+  <script>
+  (function () {
+    var petId = Number(location.pathname.split("/").slice(-2)[0]) || null;
+    var statusEl = document.getElementById("status");
+    var saveBtn = document.getElementById("save");
+    var editor = null;
+
+    function setStatus(s) { statusEl.textContent = s; }
+
+    function load() {
+      fetch("/api/pets/" + petId + "/code", { credentials: "same-origin" })
+        .then(function (r) {
+          if (r.status === 401) { location.href = "/login"; return null; }
+          if (!r.ok) throw new Error("load failed");
+          return r.json();
+        })
+        .then(function (data) {
+          if (!data) return;
+          require.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs" } });
+          require(["vs/editor/editor.main"], function () {
+            editor = monaco.editor.create(document.getElementById("editor"), {
+              value: data.code || "",
+              language: "python",
+              theme: "vs",
+              automaticLayout: true,
+              minimap: { enabled: false }
+            });
+            setStatus("Loaded. Pet #" + petId + " — available: " +
+              "sleep(x), attack(), position(x,y), move_up(px), move_down(px), move_left(px), move_right(px), while True:, for i in range(n):");
+          });
+        })
+        .catch(function () {
+          setStatus("Could not load pet code.");
+        });
+    }
+
+    saveBtn.addEventListener("click", function () {
+      if (!editor) return;
+      setStatus("Saving…");
+      fetch("/api/pets/" + petId + "/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ code: editor.getValue() })
+      })
+        .then(function (r) {
+          if (r.status === 401) { location.href = "/login"; return null; }
+          if (!r.ok) throw new Error("save failed");
+          return r.json();
+        })
+        .then(function () { setStatus("Saved."); })
+        .catch(function () { setStatus("Save failed."); });
+    });
+
+    load();
+  })();
+  </script>
+</body>
+</html>
+

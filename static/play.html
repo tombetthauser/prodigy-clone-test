@@ -6,11 +6,13 @@
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#111;}
 #gear{position:fixed;top:10px;right:14px;z-index:3;color:#fff;text-decoration:none;font-size:26px;line-height:1;padding:4px;}
+#mute-btn{position:fixed;top:10px;left:14px;z-index:3;background:transparent;border:0;color:#fff;font-size:26px;line-height:1;padding:4px;cursor:pointer;}
 #world{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;}
 </style>
 </head>
 <body>
 <a href="/config" id="gear" title="Settings">⚙️</a>
+<button id="mute-btn" type="button" title="Sound muted">🔇</button>
 <canvas id="world"></canvas>
 <script>
 (function () {
@@ -22,9 +24,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   var ws = null;
   var peers = {};
   var npcs = [];
-  var me = { x: 400, y: 300, name: "", sprite: "", shoutGreeting: "Hello!" };
+  var pets = [];
+  var petRender = {};
+  var me = {
+    x: 400,
+    y: 300,
+    name: "",
+    sprite: "",
+    attackSprite: "",
+    shoutGreeting: "Hello!",
+    spriteWidthPx: 48
+  };
   var myAccountId = null;
-  var spriteSize = 48;
   var imgCache = {};
   var bg = new Image();
   var bgOk = false;
@@ -42,6 +53,43 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   var SPEECH_MS = 2800;
   var speechFontPx = 20;
   var mySpeechUntil = 0;
+  var shadowDarknessPct = 28;
+  var shadowHeightPct = 92;
+  var shadowBlurPx = 0;
+  var EDGE_OUTSET = 150;
+  var ATTACK_MS = 420;
+  var meAttack = { active: false, t0: 0 };
+  var muted = true;
+  var muteBtn = document.getElementById("mute-btn");
+  var walkSfx = new Audio("/sfx/walk_subtle.wav");
+  var attackSfx = new Audio("/sfx/attack_subtle.wav");
+  var bgMusic = new Audio();
+  bgMusic.loop = true;
+  walkSfx.preload = "auto";
+  attackSfx.preload = "auto";
+  var sfxVolume = 35;
+  var musicVolume = 25;
+  walkSfx.volume = 0.12;
+  attackSfx.volume = 0.16;
+  walkSfx.playbackRate = 0.58;
+  attackSfx.playbackRate = 0.78;
+  var nextFootstepAt = 0;
+
+  function updateMuteUi() {
+    muteBtn.textContent = muted ? "🔇" : "🔊";
+    muteBtn.title = muted ? "Sound muted" : "Sound on";
+  }
+  updateMuteUi();
+  muteBtn.addEventListener("click", function () {
+    muted = !muted;
+    updateMuteUi();
+    if (muted) {
+      bgMusic.pause();
+    } else if (bgMusic.src) {
+      var pm = bgMusic.play();
+      if (pm && typeof pm.catch === "function") pm.catch(function () {});
+    }
+  });
 
   function smoothEase(t) {
     t = Math.min(1, Math.max(0, t));
@@ -56,13 +104,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     return im;
   }
 
-  function spriteHalfExtents(url) {
-    var hw = spriteSize / 2;
-    var hh = spriteSize / 2;
+  function normSpriteWidth(v) {
+    return Math.max(16, Math.min(512, Number(v) || 48));
+  }
+
+  function spriteHalfExtents(url, widthPx) {
+    var w = normSpriteWidth(widthPx);
+    var hw = w / 2;
+    var hh = w / 2;
     if (url) {
       var im = cacheImg(url);
       if (im.complete && im.naturalWidth > 0) {
-        hh = (spriteSize * (im.naturalHeight / im.naturalWidth)) / 2;
+        hh = (w * (im.naturalHeight / im.naturalWidth)) / 2;
       }
     }
     return { hw: hw, hh: hh };
@@ -71,18 +124,19 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    var se = spriteHalfExtents(me.sprite);
+    var se = spriteHalfExtents(me.sprite, me.spriteWidthPx);
     var mx = Math.max(se.hw, 8);
     var my = Math.max(se.hh, 8);
-    me.x = Math.min(Math.max(me.x, mx), canvas.width - mx);
-    me.y = Math.min(Math.max(me.y, my), canvas.height - my);
+    me.x = Math.min(Math.max(me.x, mx - EDGE_OUTSET), canvas.width - mx + EDGE_OUTSET);
+    me.y = Math.min(Math.max(me.y, my - EDGE_OUTSET), canvas.height - my + EDGE_OUTSET);
   }
 
-  function drawMobSprite(url, cx, cy, targetW, wobbleAmp, faceDir) {
+  function drawMobSprite(url, cx, cy, targetW, wobbleAmp, faceDir, extraScaleX) {
     wobbleAmp = wobbleAmp == null ? 0 : wobbleAmp;
     faceDir = faceDir === -1 ? -1 : 1;
     var squashY = 1 - 0.11 * wobbleAmp;
     var squashX = 1 + 0.07 * wobbleAmp;
+    var atkScaleX = extraScaleX == null ? 1 : extraScaleX;
     var mirror = faceDir;
 
     var dw = targetW;
@@ -97,7 +151,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     if (!url) {
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.scale(squashX * mirror, squashY);
+      ctx.scale(squashX * mirror * atkScaleX, squashY);
       ctx.fillStyle = "#888";
       ctx.fillRect(-hw, -hh, dw, dh);
       ctx.restore();
@@ -106,7 +160,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
 
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(squashX * mirror, squashY);
+    ctx.scale(squashX * mirror * atkScaleX, squashY);
     if (im.complete && im.naturalWidth > 0) {
       ctx.drawImage(im, -hw, -hh, dw, dh);
     } else {
@@ -138,13 +192,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     var by = spriteTopY - gap - bh - tailH;
 
     ctx.fillStyle = "#fff";
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = Math.max(1, 1.5 * scale);
-    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.roundRect(bx, by, bw, bh, r);
     ctx.fill();
-    ctx.stroke();
 
     var tws = 11 * scale;
     ctx.beginPath();
@@ -153,11 +203,91 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     ctx.lineTo(cx + tws, by + bh - 0.5);
     ctx.closePath();
     ctx.fill();
-    ctx.stroke();
 
     ctx.fillStyle = "#000";
     ctx.fillText(displayText, cx, by + bh / 2);
     ctx.restore();
+  }
+
+  function drawShadow(cx, cy, hw, hh) {
+    var rx = Math.max(10, hw * 0.88);
+    var baseRy = Math.max(5, hh * 0.28);
+    // Interpret height_pct as shadow thickness/size (not vertical position).
+    var ry = baseRy * (shadowHeightPct / 100);
+    var y = cy + hh * 0.92;
+    var a = Math.max(0, Math.min(1, shadowDarknessPct / 100));
+    var blur = Math.max(0, shadowBlurPx | 0);
+
+    // Canvas shadowBlur only blurs the shadow, not the filled edge; do a simple multi-pass blur.
+    var passes = blur ? Math.min(10, Math.max(2, Math.floor(blur / 3))) : 1;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0," + a.toFixed(3) + ")";
+    for (var i = 0; i < passes; i++) {
+      var t = passes === 1 ? 0 : i / (passes - 1);
+      var grow = blur ? (t * blur * 0.22) : 0;
+      var alpha = passes === 1 ? a : a * (1 - t) * (1 - t);
+      ctx.fillStyle = "rgba(0,0,0," + alpha.toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.ellipse(cx, y, rx + grow, ry + grow * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function getAttackRenderState(state, fallbackFacing) {
+    if (!state || !state.active) return { active: false, extraScaleX: 1, useAttackSprite: false, facingH: fallbackFacing || 1 };
+    var t = performance.now() - state.t0;
+    if (t >= ATTACK_MS) {
+      state.active = false;
+      return { active: false, extraScaleX: 1, useAttackSprite: false, facingH: fallbackFacing || 1 };
+    }
+    var p = t / ATTACK_MS;
+    var sx = 1;
+    var useAttack = false;
+    if (p < 0.22) {
+      sx = 1 - (p / 0.22) * 0.26;
+    } else if (p < 0.5) {
+      useAttack = true;
+      sx = 0.74 + ((p - 0.22) / 0.28) * 0.54;
+    } else if (p < 0.75) {
+      useAttack = true;
+      sx = 1.28 - ((p - 0.5) / 0.25) * 0.44;
+    } else {
+      sx = 0.84 + ((p - 0.75) / 0.25) * 0.16;
+    }
+    return {
+      active: true,
+      extraScaleX: sx,
+      useAttackSprite: useAttack,
+      facingH: state.facingH || fallbackFacing || 1
+    };
+  }
+
+  function startAttack(state, facingH) {
+    state.active = true;
+    state.t0 = performance.now();
+    state.facingH = facingH || 1;
+  }
+
+  function playSfx(baseAudio) {
+    if (muted) return;
+    try {
+      var a = baseAudio.cloneNode(true);
+      a.volume = baseAudio.volume * (sfxVolume / 100);
+      a.playbackRate = baseAudio.playbackRate || 1;
+      var p = a.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    } catch (e) {}
+  }
+
+  function applyAudioSettings() {
+    bgMusic.volume = (musicVolume / 100);
+    if (muted) {
+      bgMusic.pause();
+    } else if (bgMusic.src) {
+      var pm = bgMusic.play();
+      if (pm && typeof pm.catch === "function") pm.catch(function () {});
+    }
   }
 
   function drawName(cx, cy, hw, hh, text, fs) {
@@ -201,56 +331,179 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       ctx.fillStyle = "#393";
     }
 
+    var drawables = [];
+    for (var pi = 0; pi < pets.length; pi++) {
+      var pet = pets[pi];
+      var pr = petRender[pet.id];
+      if (!pr) {
+        pr = {
+          x: pet.x,
+          y: pet.y,
+          prevX: pet.x,
+          prevY: pet.y,
+          walkPhase: 0,
+          movingPrev: false,
+          relaxing: false,
+          relaxT0: 0,
+          relaxPhase: 0,
+          attack: { active: false, t0: 0, facingH: (Number(pet.facing_h) || 1) < 0 ? -1 : 1 },
+          lastServerAttack: false
+        };
+        petRender[pet.id] = pr;
+      } else {
+        pr.prevX = pr.x;
+        pr.prevY = pr.y;
+        pr.x += (pet.x - pr.x) * 0.2;
+        pr.y += (pet.y - pr.y) * 0.2;
+      }
+      var sleeping = !!pet.sleeping;
+      var pwob = 0;
+      if (sleeping) {
+        // Keep pet fully static while it is scripted to "sleep".
+        pr.x = pet.x;
+        pr.y = pet.y;
+        pr.prevX = pet.x;
+        pr.prevY = pet.y;
+        pr.walkPhase = 0;
+        pr.relaxing = false;
+        pr.movingPrev = false;
+      } else {
+        var pdx = pr.x - pr.prevX;
+        var pdy = pr.y - pr.prevY;
+        var pmoving = Math.abs(pdx) + Math.abs(pdy) > 0.05;
+        if (pmoving) {
+          pr.relaxing = false;
+          var psg = Math.abs(pdx) > 0.02 ? Math.sign(pdx) : ((Number(pet.facing_h) || 1) < 0 ? -1 : 1);
+          pr.walkPhase += 0.22 * psg;
+        } else {
+          if (pr.movingPrev && Math.abs(Math.sin(pr.walkPhase)) > 0.001) {
+            pr.relaxing = true;
+            pr.relaxPhase = pr.walkPhase;
+            pr.relaxT0 = performance.now();
+          }
+          pr.walkPhase = 0;
+        }
+        pr.movingPrev = pmoving;
+        if (pr.relaxing) {
+          var prt = (performance.now() - pr.relaxT0) / RELAX_MS;
+          if (prt >= 1) pr.relaxing = false;
+          else pwob = Math.abs(Math.sin(pr.relaxPhase || 0)) * (1 - smoothEase(prt));
+        } else {
+          pwob = Math.abs(Math.sin(pr.walkPhase || 0));
+        }
+      }
+      if (pet.attacking && !pr.lastServerAttack && pet.attack_sprite) {
+        startAttack(pr.attack, (Number(pet.facing_h) || 1) < 0 ? -1 : 1);
+      }
+      pr.lastServerAttack = !!pet.attacking;
+      var pAtk = getAttackRenderState(pr.attack, (Number(pet.facing_h) || 1) < 0 ? -1 : 1);
+      var purl = pet.attacking && pet.attack_sprite ? pet.attack_sprite : pet.sprite;
+      var pwidth = Math.max(24, Math.min(256, Number(pet.size_px) || 52));
+      var pd = spriteHalfExtents(purl, pwidth);
+      drawables.push({
+        self: false,
+        x: pr.x,
+        y: pr.y,
+        sprite: pAtk.useAttackSprite && pet.attack_sprite ? pet.attack_sprite : purl,
+        width: pwidth,
+        wobble: pwob,
+        face: pAtk.facingH,
+        extraScaleX: pAtk.extraScaleX,
+        dim: pd,
+        bubble: false,
+        bubbleText: "",
+        name: pet.name || "Pet"
+      });
+    }
     for (var pid in peers) {
       if (!Object.prototype.hasOwnProperty.call(peers, pid)) continue;
       var p = peers[pid];
-      var pdim = drawMobSprite(
-        p.sprite,
-        p.x,
-        p.y,
-        spriteSize,
-        peerWobbleAmp(p),
-        p.lastHx || 1
-      );
-      if (p.speechUntil && performance.now() < p.speechUntil) {
-        drawSpeechBubble(
-          p.x,
-          p.y - pdim.hh,
-          p.speechText || p.shoutGreeting || "Hello!"
-        );
-      }
-      drawName(p.x, p.y, pdim.hw, pdim.hh, p.name || pid);
+      var pAtk = getAttackRenderState(p.attack, p.facingH || p.lastHx || 1);
+      var pw = normSpriteWidth(p.spriteWidthPx);
+      var pdim0 = spriteHalfExtents(p.sprite, pw);
+      drawables.push({
+        id: pid,
+        self: false,
+        x: p.x,
+        y: p.y,
+        sprite: pAtk.useAttackSprite && p.attackSprite ? p.attackSprite : p.sprite,
+        width: pw,
+        wobble: peerWobbleAmp(p),
+        face: pAtk.facingH,
+        extraScaleX: pAtk.extraScaleX,
+        dim: pdim0,
+        bubble: p.speechUntil && performance.now() < p.speechUntil,
+        bubbleText: p.speechText || p.shoutGreeting || "Hello!",
+        name: p.name || pid
+      });
     }
+    var mw = normSpriteWidth(me.spriteWidthPx);
+    var mdim0 = spriteHalfExtents(me.sprite, mw);
+    var meAtk = getAttackRenderState(meAttack, lastFacingH || 1);
+    drawables.push({
+      self: true,
+      x: me.x,
+      y: me.y,
+      sprite: meAtk.useAttackSprite && me.attackSprite ? me.attackSprite : me.sprite,
+      width: mw,
+      wobble: meDrawWobble,
+      face: meAtk.facingH,
+      extraScaleX: meAtk.extraScaleX,
+      dim: mdim0,
+      bubble: mySpeechUntil && performance.now() < mySpeechUntil,
+      bubbleText: me.shoutGreeting || "Hello!",
+      name: me.name
+    });
 
-    var mdim = drawMobSprite(
-      me.sprite,
-      me.x,
-      me.y,
-      spriteSize,
-      meDrawWobble,
-      lastFacingH || 1
-    );
-    if (mySpeechUntil && performance.now() < mySpeechUntil) {
-      drawSpeechBubble(me.x, me.y - mdim.hh, me.shoutGreeting || "Hello!");
+    drawables.sort(function (a, b) {
+      return (a.y + a.dim.hh) - (b.y + b.dim.hh);
+    });
+
+    for (var di = 0; di < drawables.length; di++) {
+      var d = drawables[di];
+      drawShadow(d.x, d.y, d.dim.hw, d.dim.hh);
+      var dim = drawMobSprite(
+        d.sprite,
+        d.x,
+        d.y,
+        d.width,
+        d.wobble,
+        d.face,
+        d.extraScaleX
+      );
+      if (d.bubble) {
+        drawSpeechBubble(d.x, d.y - dim.hh, d.bubbleText);
+      }
+      drawName(d.x, d.y, dim.hw, dim.hh, d.name, d.self ? 13 : 12);
     }
-    drawName(me.x, me.y, mdim.hw, mdim.hh, me.name, 13);
 
     requestAnimationFrame(draw);
   }
 
   function sendMove() {
     if (!ws || ws.readyState !== WebSocket.OPEN || !myId) return;
-    ws.send(JSON.stringify({ type: "move", x: me.x, y: me.y }));
+    ws.send(JSON.stringify({ type: "move", x: me.x, y: me.y, facing_h: lastFacingH || 1 }));
   }
 
   function applySettings(msg) {
-    if (msg.sprite_size !== undefined)
-      spriteSize = Math.max(16, Math.min(512, Number(msg.sprite_size) || spriteSize));
     if (msg.speech_font_px !== undefined)
       speechFontPx = Math.max(
         10,
         Math.min(48, Number(msg.speech_font_px) || speechFontPx)
       );
+    if (msg.sfx_volume !== undefined) sfxVolume = Math.max(0, Math.min(100, Number(msg.sfx_volume) || sfxVolume));
+    if (msg.music_volume !== undefined) musicVolume = Math.max(0, Math.min(100, Number(msg.music_volume) || musicVolume));
+    if (msg.shadow_darkness_pct !== undefined)
+      shadowDarknessPct = Math.max(0, Math.min(100, Number(msg.shadow_darkness_pct) || shadowDarknessPct));
+    if (msg.shadow_height_pct !== undefined)
+      shadowHeightPct = Math.max(50, Math.min(160, Number(msg.shadow_height_pct) || shadowHeightPct));
+    if (msg.shadow_blur_px !== undefined)
+      shadowBlurPx = Math.max(0, Math.min(40, Number(msg.shadow_blur_px) || shadowBlurPx));
+    if (msg.music_url !== undefined) {
+      bgMusic.src = msg.music_url || "";
+      bgMusic.preload = "auto";
+    }
+    applyAudioSettings();
     resizeCanvas();
     sendMove();
   }
@@ -282,7 +535,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       relaxPhase: 0,
       speechUntil: 0,
       speechText: msg.shout_greeting || "Hello!",
-      shoutGreeting: msg.shout_greeting || "Hello!"
+      shoutGreeting: msg.shout_greeting || "Hello!",
+      spriteWidthPx: normSpriteWidth(msg.sprite_width_px),
+      facingH: (Number(msg.facing_h) || 1) < 0 ? -1 : 1,
+      attackSprite: msg.attack_sprite || "",
+      attack: { active: false, t0: 0, facingH: (Number(msg.facing_h) || 1) < 0 ? -1 : 1 }
     };
   }
 
@@ -339,8 +596,35 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         }
         return;
       }
+      if (msg.type === "user_profile") {
+        var aidp = msg.account_id;
+        var wpx = normSpriteWidth(msg.sprite_width_px);
+        if (aidp === myAccountId) {
+          me.spriteWidthPx = wpx;
+          resizeCanvas();
+        }
+        for (var up in peers) {
+          if (!Object.prototype.hasOwnProperty.call(peers, up)) continue;
+          if (peers[up].account_id === aidp) peers[up].spriteWidthPx = wpx;
+        }
+        return;
+      }
       if (msg.type === "settings") {
         applySettings(msg);
+        return;
+      }
+      if (msg.type === "pets") {
+        pets = msg.pets || [];
+        var keep = {};
+        for (var kk = 0; kk < pets.length; kk++) keep[pets[kk].id] = true;
+        for (var rk in petRender) {
+          if (!Object.prototype.hasOwnProperty.call(petRender, rk)) continue;
+          if (!keep[rk]) delete petRender[rk];
+        }
+        for (var k = 0; k < pets.length; k++) {
+          if (pets[k].sprite) cacheImg(pets[k].sprite);
+          if (pets[k].attack_sprite) cacheImg(pets[k].attack_sprite);
+        }
         return;
       }
       if (msg.type === "reload_world_bg") {
@@ -365,20 +649,42 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         }
         return;
       }
+      if (msg.type === "user_attack_sprite") {
+        var aa = msg.account_id;
+        if (aa === myAccountId) {
+          me.attackSprite = msg.attack_sprite || "";
+          cacheImg(me.attackSprite);
+        }
+        for (var ap in peers) {
+          if (!Object.prototype.hasOwnProperty.call(peers, ap)) continue;
+          if (peers[ap].account_id === aa) {
+            peers[ap].attackSprite = msg.attack_sprite || "";
+            cacheImg(peers[ap].attackSprite);
+          }
+        }
+        return;
+      }
       if (msg.type === "hello") {
         myId = msg.id;
         myAccountId = msg.account_id;
         me.name = msg.username || "?";
         me.sprite = msg.sprite || "";
+        me.attackSprite = msg.attack_sprite || "";
         me.shoutGreeting = msg.shout_greeting || "Hello!";
-        spriteSize = Math.max(16, Math.min(512, Number(msg.sprite_size) || 48));
+        me.spriteWidthPx = normSpriteWidth(msg.sprite_width_px);
         speechFontPx = Math.max(
           10,
           Math.min(48, Number(msg.speech_font_px) || 20)
         );
-        resizeCanvas();
-        me.x = canvas.width / 2;
-        me.y = canvas.height / 2;
+        sfxVolume = Math.max(0, Math.min(100, Number(msg.sfx_volume) || 35));
+        musicVolume = Math.max(0, Math.min(100, Number(msg.music_volume) || 25));
+        shadowDarknessPct = Math.max(0, Math.min(100, Number(msg.shadow_darkness_pct) || 28));
+        shadowHeightPct = Math.max(50, Math.min(160, Number(msg.shadow_height_pct) || 92));
+        shadowBlurPx = Math.max(0, Math.min(40, Number(msg.shadow_blur_px) || 0));
+        bgMusic.src = msg.music_url || "";
+        applyAudioSettings();
+        me.x = Number(msg.x) || 400;
+        me.y = Number(msg.y) || 300;
         walkPhaseMe = 0;
         movingKeysPrev = false;
         relaxingMe = false;
@@ -386,15 +692,22 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         mySpeechUntil = 0;
         lastMeX = me.x;
         lastMeY = me.y;
-        lastFacingH = 1;
+        lastFacingH = (Number(msg.facing_h) || 1) < 0 ? -1 : 1;
         npcs = msg.npcs || [];
+        pets = msg.pets || [];
         peers = {};
         var pl = msg.players || [];
         for (var j = 0; j < pl.length; j++) {
           var p = pl[j];
           peers[p.id] = peerTemplate(p, 0, 1);
         }
+        for (var kp = 0; kp < pets.length; kp++) {
+          if (pets[kp].sprite) cacheImg(pets[kp].sprite);
+          if (pets[kp].attack_sprite) cacheImg(pets[kp].attack_sprite);
+        }
+        resizeCanvas();
         cacheImg(me.sprite);
+        cacheImg(me.attackSprite);
         sendMove();
         ws.send(JSON.stringify({ type: "hello" }));
         return;
@@ -402,8 +715,14 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       if (msg.type === "join") {
         peers[msg.id] = peerTemplate(msg, 0, 1);
         cacheImg(peers[msg.id].sprite);
+        cacheImg(peers[msg.id].attackSprite);
       } else if (msg.type === "leave") {
         delete peers[msg.id];
+      } else if (msg.type === "attack") {
+        if (msg.id === myId) return;
+        var pa = peers[msg.id];
+        if (!pa || !pa.attackSprite) return;
+        startAttack(pa.attack, (Number(msg.facing_h) || pa.facingH || 1) < 0 ? -1 : 1);
       } else if (msg.type === "move") {
         if (msg.id === myId) return;
         var prev = peers[msg.id];
@@ -420,6 +739,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
           peers[msg.id].speechUntil = prev.speechUntil;
           peers[msg.id].speechText =
             prev.speechText || peers[msg.id].shoutGreeting || "Hello!";
+          if (!msg.facing_h) peers[msg.id].facingH = prev.facingH || peers[msg.id].facingH;
+          peers[msg.id].attack = prev.attack || peers[msg.id].attack;
         }
         bumpPeerWalk(peers[msg.id], ox, oy);
         cacheImg(peers[msg.id].sprite);
@@ -431,6 +752,17 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   }
 
   window.onkeydown = function (e) {
+    if (e.code === "KeyA") {
+      if (e.repeat) return;
+      e.preventDefault();
+      if (!me.attackSprite || meAttack.active) return;
+      startAttack(meAttack, lastFacingH || 1);
+      playSfx(attackSfx);
+      if (ws && ws.readyState === WebSocket.OPEN && myId) {
+        ws.send(JSON.stringify({ type: "attack" }));
+      }
+      return;
+    }
     if (e.code === "Space" || e.key === " ") {
       if (e.repeat) return;
       e.preventDefault();
@@ -442,6 +774,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     keys[e.key.toLowerCase()] = true;
   };
   window.onkeyup = function (e) {
+    if (e.code === "KeyA") {
+      e.preventDefault();
+      return;
+    }
     if (e.code === "Space" || e.key === " ") {
       e.preventDefault();
       return;
@@ -456,20 +792,33 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   function tick() {
     var dxKey = 0;
     var dyKey = 0;
-    if (keys["arrowleft"] || keys["a"]) dxKey -= 1;
+    if (keys["arrowleft"]) dxKey -= 1;
     if (keys["arrowright"] || keys["d"]) dxKey += 1;
     if (keys["arrowup"] || keys["w"]) dyKey -= 1;
     if (keys["arrowdown"] || keys["s"]) dyKey += 1;
 
-    var movingKeys = dxKey !== 0 || dyKey !== 0;
+    var movingKeys = (dxKey !== 0 || dyKey !== 0) && !meAttack.active;
+    var now = performance.now();
     if (movingKeys) {
       var len = Math.sqrt(dxKey * dxKey + dyKey * dyKey) || 1;
-      var se = spriteHalfExtents(me.sprite);
+      var se = spriteHalfExtents(me.sprite, me.spriteWidthPx);
       var mx = Math.max(se.hw, 8);
       var my = Math.max(se.hh, 8);
-      me.x = Math.min(Math.max(mx, me.x + (dxKey / len) * speed), canvas.width - mx);
-      me.y = Math.min(Math.max(my, me.y + (dyKey / len) * speed), canvas.height - my);
+      me.x = Math.min(
+        Math.max(mx - EDGE_OUTSET, me.x + (dxKey / len) * speed),
+        canvas.width - mx + EDGE_OUTSET
+      );
+      me.y = Math.min(
+        Math.max(my - EDGE_OUTSET, me.y + (dyKey / len) * speed),
+        canvas.height - my + EDGE_OUTSET
+      );
+      if (now >= nextFootstepAt) {
+        playSfx(walkSfx);
+        nextFootstepAt = now + 175;
+      }
       sendMove();
+    } else {
+      nextFootstepAt = now;
     }
 
     if (lastMeX === null) {

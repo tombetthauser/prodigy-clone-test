@@ -27,15 +27,6 @@ section{margin-bottom:2rem;}
 </section>
 
 <section>
-<h2>Character size (everyone)</h2>
-<p>Width in pixels for all player sprites on the map.</p>
-<form method="post" action="/config/sprite-size" id="size-form">
-<label>Pixels wide <input type="number" name="width" id="width-input" min="16" max="512" step="1"></label>
-<button type="submit">Save size</button>
-</form>
-</section>
-
-<section>
 <h2>Speech bubbles (everyone)</h2>
 <p>Font size for Space-bar shouts. Each user’s message is set in the table below.</p>
 <form method="post" action="/config/speech-font" id="speech-font-form">
@@ -45,9 +36,50 @@ section{margin-bottom:2rem;}
 </section>
 
 <section>
+<h2>Audio</h2>
+<form method="post" action="/config/music" enctype="multipart/form-data">
+<label>Background music <input type="file" name="file" accept=".wav,.ogg,.mp3,.m4a,.webm,.flac,audio/*"></label>
+<button type="submit">Upload music</button>
+</form>
+<form method="post" action="/config/sfx-volume" style="margin-top:8px;">
+<label>SFX volume <input type="range" name="volume" id="sfx-volume-input" min="0" max="100" step="1"></label>
+<button type="submit">Save</button>
+</form>
+<form method="post" action="/config/music-volume" style="margin-top:8px;">
+<label>Music volume <input type="range" name="volume" id="music-volume-input" min="0" max="100" step="1"></label>
+<button type="submit">Save</button>
+</form>
+<div id="music-current"></div>
+</section>
+
+<section>
+<h2>Shadows</h2>
+<form method="post" action="/config/shadow">
+<label>Darkness <input type="range" name="darkness_pct" id="shadow-darkness-input" min="0" max="100" step="1"></label><br>
+<label>Height <input type="range" name="height_pct" id="shadow-height-input" min="50" max="160" step="1"></label><br>
+<label>Blur radius <input type="range" name="blur_px" id="shadow-blur-input" min="0" max="40" step="1"></label>
+<button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Sound check</h2>
+<p>Files in <code>static/sfx/</code> are served at <code>/sfx/…</code>. Use the buttons below to verify playback (many browsers need a click on the page before in-game sounds work).</p>
+<div id="sfx-check-box">Loading…</div>
+</section>
+
+<section>
 <h2>Users</h2>
 <p>Replace sprite archives the old file. <strong>Flip horizontally</strong> rewrites that user’s image file on disk (toggle to undo). Deleting removes the account.</p>
 <div id="users-box">Loading…</div>
+</section>
+
+<section>
+<h2>Pets</h2>
+<form method="post" action="/config/pets/add">
+<button type="submit">Add Pet</button>
+</form>
+<div id="pets-box">Loading…</div>
 </section>
 
 <script>
@@ -58,23 +90,96 @@ section{margin-bottom:2rem;}
   else if (q.get("saved") === "size") flash.textContent = "Sprite size saved.";
   else if (q.get("saved") === "speech_font") flash.textContent = "Speech bubble text size saved.";
   else if (q.get("saved") === "greeting") flash.textContent = "Shout text saved.";
+  else if (q.get("saved") === "trim") flash.textContent = "Sprite trimmed to transparent PNG.";
   else if (q.get("saved") === "flip") flash.textContent = "Sprite image file updated (mirrored on disk).";
+  else if (q.get("saved") === "attack_sprite") flash.textContent = "Attack sprite updated.";
+  else if (q.get("saved") === "flip_attack") flash.textContent = "Attack sprite mirrored on disk.";
+  else if (q.get("saved") === "trim_attack") flash.textContent = "Attack sprite trimmed to transparent PNG.";
+  else if (q.get("saved") === "trim_bounds") flash.textContent = "Sprite trimmed to non-empty bounds.";
+  else if (q.get("saved") === "trim_attack_bounds") flash.textContent = "Attack sprite trimmed to non-empty bounds.";
+  else if (q.get("saved") === "music") flash.textContent = "Background music uploaded.";
+  else if (q.get("saved") === "shadow") flash.textContent = "Shadow settings saved.";
+  else if (q.get("saved") === "sfx_volume") flash.textContent = "SFX volume saved.";
+  else if (q.get("saved") === "music_volume") flash.textContent = "Music volume saved.";
+  else if (q.get("saved") === "pet_add") flash.textContent = "Pet added.";
+  else if (q.get("saved") === "pet_name") flash.textContent = "Pet name saved.";
+  else if (q.get("saved") === "pet_stats") flash.textContent = "Pet size/speed saved.";
+  else if (q.get("saved") === "pet_code_mode") flash.textContent = "Pet code mode saved.";
+  else if (q.get("saved") === "pet_delete") flash.textContent = "Pet removed.";
   else if (q.get("saved") === "sprite") flash.textContent = "User sprite updated.";
   else if (q.get("deleted") === "1") flash.textContent = "User deleted.";
   else if (q.get("error")) {
     var errs = {
       world_bad_image: "Background must be PNG or JPEG.",
       world_too_big: "Background file too large (max 2 MB).",
-      bad_width: "Invalid sprite width.",
       bad_speech_font: "Speech text size must be between 10 and 48 px.",
       bad_image: "Invalid image file.",
       file_too_big: "Image too large (max 2 MB).",
       no_user: "User not found.",
+      no_pet: "Pet not found.",
+      no_pet_sprite: "Pet image missing.",
+      no_attack: "No attack sprite uploaded for that user.",
       flip_failed: "Could not mirror that image (try PNG/JPEG/WebP).",
+      trim_failed: "Could not trim white background from that sprite.",
+      music_too_big: "Music file too large (max 15 MB).",
+      bad_music: "Unsupported music file type.",
       server: "Server error."
     };
     var code = q.get("error");
     flash.textContent = errs[code] || ("Error: " + code);
+  }
+
+  function loadSfxList() {
+    var box = document.getElementById("sfx-check-box");
+    fetch("/api/sfx/list", { credentials: "same-origin" })
+      .then(function (r) {
+        if (r.status === 401) {
+          location.href = "/login";
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        var files = data.files || [];
+        if (!files.length) {
+          box.textContent =
+            "No supported audio files in static/sfx. Add .wav, .ogg, .mp3, etc., then refresh.";
+          return;
+        }
+        box.innerHTML = files
+          .map(function (f) {
+            return (
+              '<div style="margin:6px 0;">' +
+              "<code>" +
+              escapeHtml(f) +
+              "</code> " +
+              '<button type="button" class="sfx-play" data-sfx="' +
+              escapeAttr(f) +
+              '">Play</button></div>'
+            );
+          })
+          .join("");
+        var buttons = box.querySelectorAll(".sfx-play");
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].addEventListener("click", function () {
+            var name = this.getAttribute("data-sfx");
+            if (!name) return;
+            var url = "/sfx/" + encodeURIComponent(name);
+            var a = new Audio(url);
+            a.volume = 0.45;
+            var p = a.play();
+            if (p && typeof p.catch === "function") {
+              p.catch(function () {
+                alert("Could not play (check console / browser autoplay rules).");
+              });
+            }
+          });
+        }
+      })
+      .catch(function () {
+        box.textContent = "Could not load sound list.";
+      });
   }
 
   function load() {
@@ -88,8 +193,15 @@ section{margin-bottom:2rem;}
       })
       .then(function (data) {
         if (!data) return;
-        document.getElementById("width-input").value = data.sprite_width;
         document.getElementById("speech-font-input").value = data.speech_font_px;
+        document.getElementById("sfx-volume-input").value = Number(data.sfx_volume || 35);
+        document.getElementById("music-volume-input").value = Number(data.music_volume || 25);
+        document.getElementById("shadow-darkness-input").value = Number(data.shadow_darkness_pct || 28);
+        document.getElementById("shadow-height-input").value = Number(data.shadow_height_pct || 92);
+        document.getElementById("shadow-blur-input").value = Number(data.shadow_blur_px || 0);
+        document.getElementById("music-current").innerHTML = data.music_url
+          ? ("Current music: <code>" + escapeHtml(data.music_url) + "</code>")
+          : "No background music uploaded.";
         var box = document.getElementById("users-box");
         var rows = data.users.map(function (u) {
           var flipped = u.sprite_flipped;
@@ -114,6 +226,46 @@ section{margin-bottom:2rem;}
             "<td>" +
             '<form method="post" action="/config/users/' +
             u.id +
+            '/attack-sprite" enctype="multipart/form-data">' +
+            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+            "<button type=\"submit\">Upload attack image</button>" +
+            "</form>" +
+            (u.attack_sprite_url
+              ? '<div style="margin-top:6px;"><img class="thumb" src="' +
+                escapeHtml(u.attack_sprite_url) +
+                '" alt=""></div>'
+              : "<div><small>No attack image</small></div>") +
+            "</td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/flip-attack-sprite">' +
+            "<button type=\"submit\">Flip attack image</button></form>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/trim-attack-white" style="margin-top:6px;">' +
+            '<button type="submit">Trim attack white</button>' +
+            "</form>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/trim-attack-bounds" style="margin-top:6px;">' +
+            '<button type="submit">Trim attack bounds</button>' +
+            "</form>" +
+            "<div><small>" +
+            (u.attack_sprite_flipped ? "Attack image is currently mirrored on disk." : "Attack image matches upload.") +
+            "</small></div></td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/sprite-width">' +
+            '<input type="number" name="sprite_width_px" min="16" max="512" step="1" style="width:6rem" value="' +
+            Number(u.sprite_width_px || 48) +
+            '"> ' +
+            '<button type="submit">Save width</button>' +
+            "</form></td>" +
+            "<td>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
             '/sprite" enctype="multipart/form-data">' +
             '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
             "<button type=\"submit\">Replace sprite</button>" +
@@ -129,7 +281,17 @@ section{margin-bottom:2rem;}
             (flipped
               ? "Sprite file is currently mirrored on disk."
               : "Sprite file matches upload.") +
-            "</small></div></td>" +
+            "</small></div>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/trim-white" style="margin-top:6px;">' +
+            '<button type="submit">Trim white → transparent PNG</button>' +
+            "</form>" +
+            '<form method="post" action="/config/users/' +
+            u.id +
+            '/trim-bounds" style="margin-top:6px;">' +
+            '<button type="submit">Trim empty bounds</button>' +
+            "</form></td>" +
             "<td>" +
             '<form method="post" action="/config/users/' +
             u.id +
@@ -142,12 +304,64 @@ section{margin-bottom:2rem;}
           );
         });
         box.innerHTML =
-          "<table><thead><tr><th>User</th><th>Sprite</th><th>Space-bar shout</th><th>Replace</th><th>Mirror file</th><th></th></tr></thead><tbody>" +
+          "<table><thead><tr><th>User</th><th>Sprite</th><th>Space-bar shout</th><th>Attack image</th><th>Attack tools</th><th>Sprite width</th><th>Replace</th><th>Sprite tools</th><th></th></tr></thead><tbody>" +
           rows.join("") +
+          "</tbody></table>";
+
+        var pbox = document.getElementById("pets-box");
+        var petRows = (data.pets || []).map(function (p) {
+          return (
+            "<tr><td>" +
+            '<form method="post" action="/config/pets/' + p.id + '/name">' +
+            '<input type="text" name="name" maxlength="24" value="' + escapeAttr(p.name || "Pet") + '"> ' +
+            '<button type="submit">Save</button>' +
+            "</form>" +
+            '<form method="post" action="/config/pets/' + p.id + '/stats" style="margin-top:6px;">' +
+            'Size <input type="number" name="size_px" min="24" max="256" step="1" style="width:4.5rem" value="' + Number(p.size_px || 52) + '"> ' +
+            'Speed <input type="number" name="speed_px" min="0.2" max="4.0" step="0.1" style="width:4.5rem" value="' + Number(p.speed_px || 1).toFixed(1) + '"> ' +
+            '<button type="submit">Save</button></form></td>' +
+            "<td>" +
+            (p.sprite_url ? '<img class="thumb" src="' + escapeHtml(p.sprite_url) + '" alt="">' : "<small>None</small>") +
+            '<form method="post" action="/config/pets/' + p.id + '/sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
+            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+            '<button type="submit">Upload</button></form></td>' +
+            "<td>" +
+            '<form method="post" action="/config/pets/' + p.id + '/flip-sprite"><button type="submit">Flip</button></form>' +
+            '<form method="post" action="/config/pets/' + p.id + '/trim-white" style="margin-top:6px;"><button type="submit">Trim white</button></form>' +
+            '<form method="post" action="/config/pets/' + p.id + '/trim-bounds" style="margin-top:6px;"><button type="submit">Trim bounds</button></form></td>' +
+            "<td>" +
+            (p.attack_sprite_url ? '<img class="thumb" src="' + escapeHtml(p.attack_sprite_url) + '" alt="">' : "<small>None</small>") +
+            '<form method="post" action="/config/pets/' + p.id + '/attack-sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
+            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+            '<button type="submit">Upload</button></form></td>' +
+            "<td>" +
+            '<form method="post" action="/config/pets/' + p.id + '/flip-attack-sprite"><button type="submit">Flip</button></form>' +
+            '<form method="post" action="/config/pets/' + p.id + '/trim-attack-white" style="margin-top:6px;"><button type="submit">Trim white</button></form>' +
+            '<form method="post" action="/config/pets/' + p.id + '/trim-attack-bounds" style="margin-top:6px;"><button type="submit">Trim bounds</button></form></td>' +
+            "<td>" +
+            '<form method="post" action="/config/pets/' + p.id + '/code-mode">' +
+            '<select name="code_mode">' +
+            '<option value="default"' + ((p.code_mode || "default") === "default" ? " selected" : "") + '>Default</option>' +
+            '<option value="code"' + ((p.code_mode || "default") === "code" ? " selected" : "") + '>Code</option>' +
+            '</select> ' +
+            '<button type="submit">Save</button></form>' +
+            '<div style="margin-top:6px;"><a href="/config/pets/' + p.id + '/code">Code Behavior</a></div>' +
+            "</td>" +
+            "<td>" +
+            '<form method="post" action="/config/pets/' + p.id + '/recenter" style="margin-bottom:6px;">' +
+            '<button type="submit">Recenter</button></form>' +
+            '<form method="post" action="/config/pets/' + p.id + '/delete" onsubmit="return confirm(\'Delete pet?\');">' +
+            '<button type="submit">Delete</button></form></td></tr>'
+          );
+        });
+        pbox.innerHTML =
+          "<table><thead><tr><th>Name</th><th>Sprite</th><th>Sprite tools</th><th>Attack</th><th>Attack tools</th><th>Behavior</th><th></th></tr></thead><tbody>" +
+          petRows.join("") +
           "</tbody></table>";
       })
       .catch(function () {
         document.getElementById("users-box").textContent = "Could not load users.";
+        document.getElementById("pets-box").textContent = "Could not load pets.";
       });
   }
 
@@ -162,6 +376,7 @@ section{margin-bottom:2rem;}
     return escapeHtml(s).replace(/'/g, "&#39;");
   }
 
+  loadSfxList();
   load();
 })();
 </script>
