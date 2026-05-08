@@ -11,7 +11,8 @@ This sets up `prodigy-clone-test` on the Pi with the same pattern you described:
 
 - `PI_HOST`: `tom@192.168.1.222`
 - `APP_DIR`: `/srv/prodigy/repo/prodigy`
-- `SERVICE_NAME`: `prodigy-clone-test`
+- `DEPLOY_SCRIPT`: `/usr/local/bin/prodigy-server.sh`
+- `SERVICE_NAME`: the systemd unit that actually runs this app (discover with commands below)
 - `BRANCH`: `main`
 - `PORT`: `8001` (keep this distinct from the existing `thinkpad.club` app port)
 - `PYTHON_BIN`: `/usr/bin/python3`
@@ -21,14 +22,31 @@ If your other project already uses a different structure, keep that structure an
 Where each value is set:
 
 - `PI_HOST`: used in the SSH commands you run from your local machine (`ssh ...`).
-- `APP_DIR`: set in command paths, in the deploy script (`APP_DIR="..."`), and in both systemd units (`WorkingDirectory=...`).
-- `SERVICE_NAME`: used as the filename/name of the main app service (`prodigy-clone-test.service`) and in status/restart/log commands.
-- `BRANCH`: set inside `/usr/local/bin/deploy-prodigy-clone-test.sh` as `BRANCH="main"`.
+- `APP_DIR`: set in command paths, in the deploy script (`APP_DIR="..."`), and in systemd service `WorkingDirectory`.
+- `DEPLOY_SCRIPT`: command used for manual pull/sync.
+- `SERVICE_NAME`: used in `systemctl status/restart` and `journalctl -u`.
+- `BRANCH`: set inside deploy script as `BRANCH="main"`.
 - `PORT`: set in `/etc/systemd/system/prodigy-clone-test.service` (`Environment=PORT=...` and `uvicorn --port ...`) and in Caddy (`reverse_proxy 127.0.0.1:PORT`).
 - `PYTHON_BIN`: used in scripts/commands that create the venv (for this doc, it is effectively the `python3` command you run on the Pi).
 
 Important: Step 0 itself does not write values anywhere yet; it is a checklist.  
 You actually apply those values in Steps 1-10 when creating/editing files and running commands.
+
+Detect active script/service names on your Pi first (recommended before any restart commands):
+
+```bash
+ssh tom@192.168.1.222
+ls /usr/local/bin/ | grep -Ei 'prodigy|thinkpad|deploy'
+systemctl list-unit-files | grep -Ei 'prodigy|thinkpad'
+```
+
+Then inspect candidate services and choose the one whose `WorkingDirectory` is `/srv/prodigy/repo/prodigy`:
+
+```bash
+systemctl cat prodigy-app.service
+systemctl cat prodigy.service
+systemctl cat thinkpad-server.service
+```
 
 ---
 
@@ -82,10 +100,10 @@ Important:
 
 ## 4) Create the deploy script used at boot
 
-Create `/usr/local/bin/deploy-prodigy-clone-test.sh`:
+Create `/usr/local/bin/prodigy-server.sh`:
 
 ```bash
-sudo tee /usr/local/bin/deploy-prodigy-clone-test.sh > /dev/null <<'EOF'
+sudo tee /usr/local/bin/prodigy-server.sh > /dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -116,7 +134,7 @@ EOF
 Make executable:
 
 ```bash
-sudo chmod +x /usr/local/bin/deploy-prodigy-clone-test.sh
+sudo chmod +x /usr/local/bin/prodigy-server.sh
 ```
 
 ---
@@ -136,7 +154,7 @@ Wants=network-online.target
 Type=oneshot
 User=tom
 WorkingDirectory=/srv/prodigy/repo/prodigy
-ExecStart=/usr/local/bin/deploy-prodigy-clone-test.sh
+ExecStart=/usr/local/bin/prodigy-server.sh
 RemainAfterExit=yes
 
 [Install]
@@ -285,14 +303,43 @@ curl -I https://prodigy.thinkpad.club/login
 Manual pull + restart:
 
 ```bash
-ssh tom@192.168.1.222 '/usr/local/bin/deploy-prodigy-clone-test.sh && sudo systemctl restart prodigy-clone-test'
+ssh tom@192.168.1.222 '/usr/local/bin/prodigy-server.sh'
+
+# Then restart the app service that points to /srv/prodigy/repo/prodigy:
+ssh tom@192.168.1.222 'sudo systemctl restart <SERVICE_NAME>'
 ```
 
 Quick logs:
 
 ```bash
-ssh tom@192.168.1.222 'journalctl -u prodigy-clone-test -n 200 --no-pager'
+ssh tom@192.168.1.222 'journalctl -u <SERVICE_NAME> -n 200 --no-pager'
 ```
+
+---
+
+## One-time data sync + never override guide
+
+If you intentionally pushed `data/` and/or `static/` once and now want server-local changes to persist without future pull overrides:
+
+```bash
+cd /srv/prodigy/repo/prodigy
+
+# Mark currently tracked files under these directories as local-only
+git ls-files -z static data | xargs -0 git update-index --skip-worktree
+
+# Verify (S means skip-worktree set)
+git ls-files -v static data | grep '^S'
+```
+
+If you later want to re-sync them from remote:
+
+```bash
+cd /srv/prodigy/repo/prodigy
+git ls-files -z static data | xargs -0 git update-index --no-skip-worktree
+git pull --ff-only origin main
+```
+
+Recommended long-term: keep runtime data outside Git tracking (`data/` ignored/untracked), and only version code/static assets that should be shared.
 
 ---
 
@@ -302,3 +349,6 @@ ssh tom@192.168.1.222 'journalctl -u prodigy-clone-test -n 200 --no-pager'
 - If service fails: confirm `uvicorn` exists in `.venv` and `requirements.txt` installed cleanly.
 - If port conflict: switch to another free port and update service + proxy config.
 - If static/media issues: verify write permissions under `/srv/prodigy/repo/prodigy`.
+- If pull says files were changed/deleted unexpectedly (especially under `data/` or `static/`), check skip-worktree status:
+  - `git ls-files -v static data | grep '^S'`
+  - re-apply `git update-index --skip-worktree` if needed.
