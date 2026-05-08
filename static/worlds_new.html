@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add a world</title>
+<style>
+html,body{margin:0;background:#f4f6fa;font-family:sans-serif;color:#222;}
+header{padding:18px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #dde3ee;background:#fff;position:sticky;top:0;z-index:2;}
+header h1{margin:0;font-size:22px;}
+header .spacer{flex:1 1 auto;}
+header a{color:#6495ed;text-decoration:none;font-weight:700;}
+header a:hover{text-decoration:underline;}
+
+main{padding:18px 22px 60px;max-width:720px;margin:0 auto;}
+.card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 6px 18px rgba(0,0,0,0.05);}
+.label-row{display:block;margin:0 0 14px;font-size:14px;color:#444;}
+.label-row strong{display:block;color:#222;margin-bottom:6px;font-size:14px;}
+input[type="text"], input[type="file"]{
+  width:100%;padding:9px 11px;border-radius:8px;border:1px solid #c7cee0;background:#fff;color:#222;box-sizing:border-box;font-size:15px;
+}
+input[type="text"]:focus, input[type="file"]:focus{outline:2px solid #6495ed;border-color:#6495ed;}
+button.primary{background:#6495ed;color:#fff;border:0;padding:11px 20px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 4px 12px rgba(100,149,237,0.35);transition:transform .08s ease, background .15s ease, box-shadow .15s ease;}
+button.primary:hover:not([disabled]){background:#5483dc;box-shadow:0 6px 16px rgba(100,149,237,0.45);}
+button.primary:active:not([disabled]){transform:translateY(1px);background:#4a78d2;}
+button.primary[disabled]{background:#aab8cf;cursor:not-allowed;box-shadow:none;color:#f0f3fa;}
+
+#status{margin-top:14px;min-height:1em;color:#1f9a43;font-size:14px;font-weight:700;}
+#status.bad{color:#d13d3d;}
+.preview{
+  width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;
+  border:2px dashed #cfd6e1;border-radius:12px;margin-bottom:14px;
+  background-color:#dbe3f0;display:flex;align-items:center;justify-content:center;color:#7c8aa3;font-size:34px;
+}
+.cost-row{display:flex;align-items:center;gap:10px;margin:6px 0 16px;color:#555;font-size:14px;}
+.cost-row img{width:22px;height:22px;object-fit:contain;}
+.cost-row .amt{font-weight:800;color:#6495ed;font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌍 Add a world</h1>
+  <span class="spacer"></span>
+  <a href="/worlds">← Back to worlds</a>
+</header>
+<main>
+  <form class="card" id="world-form">
+    <div class="cost-row">
+      <span>Cost to create:</span>
+      <img src="/static-sprites/magicoin/coin.png" alt="">
+      <span class="amt">50</span>
+      <span>magicoin</span>
+      <span style="flex:1 1 auto;"></span>
+      <span>Your balance: <strong id="balance" style="color:#6495ed;">—</strong></span>
+    </div>
+    <div class="preview" id="bg-preview">🖼️</div>
+    <label class="label-row"><strong>Name</strong>
+      <input type="text" name="name" id="world-name" placeholder="My world" maxlength="48" required>
+    </label>
+    <label class="label-row"><strong>Background image (PNG or JPG)</strong>
+      <input type="file" name="file" id="world-file" accept="image/png,image/jpeg" required>
+    </label>
+    <button type="submit" class="primary" id="submit-btn">Create world</button>
+    <div id="status"></div>
+  </form>
+</main>
+<script>
+(function () {
+  var form = document.getElementById("world-form");
+  var fileInput = document.getElementById("world-file");
+  var preview = document.getElementById("bg-preview");
+  var status = document.getElementById("status");
+  var btn = document.getElementById("submit-btn");
+  var balanceEl = document.getElementById("balance");
+
+  function setStatus(text, bad) {
+    status.textContent = text || "";
+    status.className = bad ? "bad" : "";
+  }
+
+  fileInput.addEventListener("change", function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (!f) { preview.style.backgroundImage = ""; preview.textContent = "🖼️"; return; }
+    var url = URL.createObjectURL(f);
+    preview.style.backgroundImage = "url(" + JSON.stringify(url) + ")";
+    preview.textContent = "";
+  });
+
+  fetch("/api/worlds", { credentials: "same-origin" })
+    .then(function (r) {
+      if (r.status === 401) { location.href = "/login"; return null; }
+      return r.json();
+    })
+    .then(function (d) {
+      if (!d) return;
+      if (typeof d.magicoin === "number") balanceEl.textContent = String(d.magicoin);
+    });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    btn.disabled = true;
+    setStatus("Creating…", false);
+    var fd = new FormData(form);
+    fetch("/api/worlds", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) {
+          if (d && d.error === "insufficient_magicoin") {
+            setStatus("Not enough magicoin (need 50).", true);
+          } else {
+            setStatus("Could not create world (" + ((d && d.error) || "error") + ").", true);
+          }
+          btn.disabled = false;
+          return;
+        }
+        setStatus("Created. Entering…", false);
+        var fd2 = new FormData();
+        return fetch("/api/worlds/" + d.world_id + "/enter", { method: "POST", credentials: "same-origin", body: fd2 })
+          .then(function (r) { return r.json(); })
+          .then(function (d2) {
+            if (d2 && d2.ok) location.href = "/play?_=" + Date.now();
+            else { setStatus("Created, but could not enter (" + ((d2 && d2.error) || "error") + ").", true); btn.disabled = false; }
+          });
+      })
+      .catch(function () { setStatus("Network error.", true); btn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

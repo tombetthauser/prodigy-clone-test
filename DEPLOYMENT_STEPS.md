@@ -10,7 +10,7 @@ This sets up `prodigy-clone-test` on the Pi with the same pattern you described:
 ## 0) Decide your values (fill these in once)
 
 - `PI_HOST`: `tom@192.168.1.222`
-- `APP_DIR`: `/home/tom/apps/prodigy-clone-test`
+- `APP_DIR`: `/srv/prodigy/repo/prodigy`
 - `SERVICE_NAME`: `prodigy-clone-test`
 - `BRANCH`: `main`
 - `PORT`: `8001` (keep this distinct from the existing `thinkpad.club` app port)
@@ -42,29 +42,41 @@ sudo apt install -y git python3 python3-venv python3-pip
 
 ---
 
-## 2) Clone this repo on the Pi
+## 2) Create app directory in `/srv` with correct ownership, then clone
 
 ```bash
-mkdir -p /home/tom/apps
-cd /home/tom/apps
-git clone <YOUR_GITHUB_REPO_URL> prodigy-clone-test
-cd /home/tom/apps/prodigy-clone-test
+sudo mkdir -p /srv/prodigy/repo
+sudo chown -R tom:tom /srv/prodigy
+cd /srv/prodigy/repo
+git clone <YOUR_GITHUB_REPO_URL> prodigy
+cd /srv/prodigy/repo/prodigy
 ```
 
 If the repo is private, make sure deploy SSH keys/token are already configured on the Pi first.
+
+If you already cloned with `sudo`, fix ownership before continuing:
+
+```bash
+sudo chown -R tom:tom /srv/prodigy
+```
 
 ---
 
 ## 3) Create virtualenv and install dependencies
 
 ```bash
-cd /home/tom/apps/prodigy-clone-test
+cd /srv/prodigy/repo/prodigy
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 deactivate
 ```
+
+Important:
+
+- Do **not** run `sudo source .venv/bin/activate` (`source` is a shell builtin).
+- Do **not** use `sudo pip ...` for this project; install through the venv pip as shown above.
 
 ---
 
@@ -77,7 +89,7 @@ sudo tee /usr/local/bin/deploy-prodigy-clone-test.sh > /dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/home/tom/apps/prodigy-clone-test"
+APP_DIR="/srv/prodigy/repo/prodigy"
 BRANCH="main"
 
 echo "==> Boot deploy for prodigy-clone-test"
@@ -123,7 +135,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=tom
-WorkingDirectory=/home/tom/apps/prodigy-clone-test
+WorkingDirectory=/srv/prodigy/repo/prodigy
 ExecStart=/usr/local/bin/deploy-prodigy-clone-test.sh
 RemainAfterExit=yes
 
@@ -148,9 +160,9 @@ Wants=prodigy-clone-test-deploy.service
 [Service]
 Type=simple
 User=tom
-WorkingDirectory=/home/tom/apps/prodigy-clone-test
+WorkingDirectory=/srv/prodigy/repo/prodigy
 Environment=PORT=8001
-ExecStart=/home/tom/apps/prodigy-clone-test/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001
+ExecStart=/srv/prodigy/repo/prodigy/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001
 Restart=always
 RestartSec=3
 
@@ -289,4 +301,4 @@ ssh tom@192.168.1.222 'journalctl -u prodigy-clone-test -n 200 --no-pager'
 - If boot pull fails: check repo auth on Pi (`git fetch origin` manually in app dir).
 - If service fails: confirm `uvicorn` exists in `.venv` and `requirements.txt` installed cleanly.
 - If port conflict: switch to another free port and update service + proxy config.
-- If static/media issues: verify write permissions under `/home/tom/apps/prodigy-clone-test`.
+- If static/media issues: verify write permissions under `/srv/prodigy/repo/prodigy`.

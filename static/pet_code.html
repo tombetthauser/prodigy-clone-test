@@ -24,6 +24,7 @@
   <script>
   (function () {
     var petId = Number(location.pathname.split("/").slice(-2)[0]) || null;
+    var applyToIds = (new URLSearchParams(location.search).get("apply_to_ids") || "").trim();
     var statusEl = document.getElementById("status");
     var saveBtn = document.getElementById("save");
     var editor = null;
@@ -31,7 +32,9 @@
     function setStatus(s) { statusEl.textContent = s; }
 
     function load() {
-      fetch("/api/pets/" + petId + "/code", { credentials: "same-origin" })
+      var url = "/api/pets/" + petId + "/code";
+      if (applyToIds) url += "?apply_to_ids=" + encodeURIComponent(applyToIds);
+      fetch(url, { credentials: "same-origin" })
         .then(function (r) {
           if (r.status === 401) { location.href = "/login"; return null; }
           if (!r.ok) throw new Error("load failed");
@@ -48,7 +51,8 @@
               automaticLayout: true,
               minimap: { enabled: false }
             });
-            setStatus("Loaded. Pet #" + petId + " — available: " +
+            var count = Array.isArray(data.apply_to_ids) ? data.apply_to_ids.length : (applyToIds ? applyToIds.split(",").length : 1);
+            setStatus("Loaded. Pet type (" + count + " instance" + (count === 1 ? "" : "s") + ") — available: " +
               "sleep(x), attack(), position(x,y), move_up(px), move_down(px), move_left(px), move_right(px), while True:, for i in range(n):");
           });
         })
@@ -64,7 +68,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ code: editor.getValue() })
+        body: JSON.stringify({ code: editor.getValue(), apply_to_ids: applyToIds })
       })
         .then(function (r) {
           if (r.status === 401) { location.href = "/login"; return null; }

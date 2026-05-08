@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worlds</title>
+<style>
+html,body{margin:0;background:#f4f6fa;font-family:sans-serif;color:#222;}
+header{padding:18px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #dde3ee;background:#fff;position:sticky;top:0;z-index:2;}
+header h1{margin:0;font-size:22px;}
+header .spacer{flex:1 1 auto;}
+header a{color:#6495ed;text-decoration:none;font-weight:700;}
+header a:hover{text-decoration:underline;}
+header form{margin:0;}
+header form button{background:transparent;border:0;color:#6495ed;font-weight:700;cursor:pointer;font-size:15px;padding:0;}
+header form button:hover{text-decoration:underline;}
+
+main{padding:18px 22px 60px;max-width:1100px;margin:0 auto;}
+.summary{background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.05);margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.summary .label{color:#666;font-size:14px;}
+.summary .value{font-size:22px;font-weight:800;color:#6495ed;font-variant-numeric:tabular-nums;}
+.section-title{margin:8px 0 10px;font-size:16px;color:#555;text-transform:uppercase;letter-spacing:0.05em;}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.cell{position:relative;background:#fff;border-radius:14px;padding:0;display:flex;flex-direction:column;box-shadow:0 4px 14px rgba(0,0,0,0.05);cursor:pointer;transition:transform .08s ease, box-shadow .15s ease;border:0;font:inherit;color:inherit;text-align:left;overflow:hidden;}
+.cell:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,0.12);}
+.cell:focus-visible{outline:3px solid #6495ed;outline-offset:2px;}
+.cell .thumb-wrap{position:relative;width:100%;padding-top:56.25%;background:#dbe3f0;overflow:hidden;}
+.cell .thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.cell .thumb-wrap .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7c8aa3;font-size:34px;}
+.cell .name{padding:10px 12px;font-size:14px;color:#333;font-weight:700;}
+.cell.current{box-shadow:0 0 0 3px #6495ed inset, 0 4px 14px rgba(0,0,0,0.05);}
+.cell .badge{position:absolute;top:10px;left:10px;background:#6495ed;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;letter-spacing:0.04em;z-index:1;}
+
+.add-cell{display:flex;align-items:center;justify-content:center;flex-direction:column;background:#fff;border:2px dashed #c5cfe1;border-radius:14px;color:#6c7a96;font-size:15px;gap:6px;text-decoration:none;cursor:pointer;min-height:170px;font-weight:700;padding:20px;text-align:center;}
+.add-cell:hover{background:#f7faff;border-color:#6495ed;color:#6495ed;}
+.add-cell .plus{font-size:28px;line-height:1;}
+.add-cell .cost{font-size:12px;font-weight:600;color:#888;margin-top:4px;}
+
+#status{margin-top:14px;min-height:1em;color:#555;font-size:14px;}
+.toast.bad{color:#d13d3d;}
+#world-preview-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,20,32,0.6);z-index:10;padding:16px;}
+#world-preview-modal.open{display:flex;}
+#world-preview-card{width:min(760px,96vw);background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,0.35);overflow:hidden;}
+#world-preview-image{width:100%;height:min(52vh,420px);background:#dbe3f0;display:flex;align-items:center;justify-content:center;}
+#world-preview-image img{width:100%;height:100%;object-fit:cover;display:block;}
+#world-preview-body{padding:14px 16px 16px;}
+#world-preview-title{margin:0 0 8px;font-size:24px;}
+#world-preview-meta{display:flex;flex-wrap:wrap;gap:8px 14px;color:#444;font-size:14px;margin-bottom:12px;}
+.pet-icon-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.pet-icon-row img{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid #d4dbea;background:#fff;}
+#world-preview-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+#world-preview-actions button{cursor:pointer;border:0;border-radius:10px;padding:9px 14px;font-weight:700;}
+#world-preview-cancel{background:#eef2fa;color:#445;}
+#world-preview-enter{background:#6495ed;color:#fff;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌍 Worlds</h1>
+  <span id="player-name" style="color:#888;"></span>
+  <span class="spacer"></span>
+  <a id="back-to-game-link" href="/play">← Back to game</a>
+  <a id="backpack-link" href="/backpack" style="margin-left:8px;">Backpack</a>
+  <form method="post" action="/logout" style="margin-left:8px;"><button type="submit">Logout</button></form>
+</header>
+<main>
+  <div class="summary">
+    <span class="label">Magicoin:</span>
+    <img id="coin-icon" src="/static-sprites/magicoin/coin.png" alt="" style="width:22px;height:22px;object-fit:contain;">
+    <span class="value" id="magicoin">—</span>
+    <span class="label" style="margin-left:24px;">Entering a world costs <strong style="color:#6495ed;">10</strong> magicoin.</span>
+  </div>
+  <div class="section-title">Choose a world</div>
+  <div id="grid" class="grid"></div>
+  <div id="status" class="toast"></div>
+</main>
+<div id="world-preview-modal" aria-hidden="true">
+  <div id="world-preview-card" role="dialog" aria-modal="true" aria-labelledby="world-preview-title">
+    <div id="world-preview-image"><span style="color:#7c8aa3;font-size:34px;">🖼️</span></div>
+    <div id="world-preview-body">
+      <h2 id="world-preview-title">World</h2>
+      <div id="world-preview-meta"></div>
+      <div>
+        <div style="font-size:13px;color:#666;margin-bottom:6px;font-weight:700;">Pets that can appear</div>
+        <div id="world-preview-pets" class="pet-icon-row"></div>
+      </div>
+      <div id="world-preview-actions">
+        <button type="button" id="world-preview-cancel">Cancel</button>
+        <button type="button" id="world-preview-enter">Enter world</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var grid = document.getElementById("grid");
+  var status = document.getElementById("status");
+  var magicoinEl = document.getElementById("magicoin");
+  var worldPreviewModal = document.getElementById("world-preview-modal");
+  var worldPreviewImage = document.getElementById("world-preview-image");
+  var worldPreviewTitle = document.getElementById("world-preview-title");
+  var worldPreviewMeta = document.getElementById("world-preview-meta");
+  var worldPreviewPets = document.getElementById("world-preview-pets");
+  var worldPreviewCancel = document.getElementById("world-preview-cancel");
+  var worldPreviewEnter = document.getElementById("world-preview-enter");
+  var backToGameLink = document.getElementById("back-to-game-link");
+  var backpackLink = document.getElementById("backpack-link");
+  var selectedWorldForPreview = null;
+  var currentWorldId = 1;
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function setStatus(text, bad) {
+    status.textContent = text || "";
+    status.className = "toast" + (bad ? " bad" : "");
+  }
+
+  function render(data) {
+    var current = Number(data.current_world_id || 1);
+    currentWorldId = current;
+    if (typeof data.magicoin === "number") magicoinEl.textContent = String(data.magicoin);
+    var html = "";
+    (data.worlds || []).forEach(function (w) {
+      var thumb = w.background_url
+        ? '<img src="' + escapeHtml(w.background_url) + '" alt="">'
+        : '<div class="placeholder">🖼️</div>';
+      var cls = "cell" + (w.id === current ? " current" : "");
+      var badge = w.id === current ? '<span class="badge">Current</span>' : "";
+      html +=
+        '<button type="button" class="' + cls + '" data-id="' + w.id + '">' +
+          badge +
+          '<span class="thumb-wrap">' + thumb + '</span>' +
+          '<span class="name">' + escapeHtml(w.name) + '</span>' +
+        '</button>';
+    });
+    grid.innerHTML = html;
+    Array.prototype.forEach.call(grid.querySelectorAll(".cell"), function (el) {
+      el.addEventListener("click", function () {
+        var id = parseInt(el.getAttribute("data-id"), 10);
+        if (!id) return;
+        var world = null;
+        for (var i = 0; i < (data.worlds || []).length; i++) {
+          if (Number(data.worlds[i].id) === Number(id)) { world = data.worlds[i]; break; }
+        }
+        if (!world) return;
+        openWorldPreview(world);
+      });
+    });
+  }
+
+  function openWorldPreview(world) {
+    selectedWorldForPreview = world;
+    if (!worldPreviewModal) return;
+    worldPreviewTitle.textContent = String(world.name || "World");
+    if (world.background_url) {
+      worldPreviewImage.innerHTML = '<img src="' + escapeHtml(world.background_url) + '" alt="">';
+    } else {
+      worldPreviewImage.innerHTML = '<span style="color:#7c8aa3;font-size:34px;">🖼️</span>';
+    }
+    var creator = world.created_by_username ? escapeHtml(world.created_by_username) : "Unknown";
+    var petCount = Number(world.pet_count || 0);
+    var bits = [
+      "<span>Created by: <strong>" + creator + "</strong></span>",
+      "<span>Monsters present: <strong>" + petCount + "</strong></span>"
+    ];
+    worldPreviewMeta.innerHTML = bits.join("");
+    var petIcons = Array.isArray(world.pet_sprite_urls) ? world.pet_sprite_urls : [];
+    if (!petIcons.length) {
+      worldPreviewPets.innerHTML = '<span style="color:#777;">No pet icons available</span>';
+    } else {
+      var iconsHtml = "";
+      for (var pi = 0; pi < petIcons.length; pi++) {
+        iconsHtml += '<img src="' + escapeHtml(petIcons[pi]) + '" alt="">';
+      }
+      worldPreviewPets.innerHTML = iconsHtml;
+    }
+    worldPreviewEnter.textContent = Number(world.id) === Number(currentWorldId) ? "Go to world" : "Enter world";
+    worldPreviewModal.classList.add("open");
+    worldPreviewModal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeWorldPreview() {
+    if (!worldPreviewModal) return;
+    worldPreviewModal.classList.remove("open");
+    worldPreviewModal.setAttribute("aria-hidden", "true");
+    selectedWorldForPreview = null;
+  }
+
+  function enterWorld(id) {
+    setStatus("Entering…", false);
+    if (worldPreviewEnter) worldPreviewEnter.disabled = true;
+    var fd = new FormData();
+    fadeOutScreenMusicThen(function () {
+      fetch("/api/worlds/" + id + "/enter", { method: "POST", credentials: "same-origin", body: fd })
+        .then(function (r) {
+          if (r.status === 401) {
+            location.href = "/login";
+            return null;
+          }
+          return r.text().then(function (txt) {
+            var data = null;
+            try { data = txt ? JSON.parse(txt) : null; } catch (e) {}
+            return { okHttp: r.ok, data: data };
+          });
+        })
+        .then(function (d) {
+          if (!d) return;
+          if ((d.data && d.data.ok) || d.okHttp) {
+            location.href = "/play?_=" + Date.now();
+            return;
+          }
+          if (d.data && d.data.error === "insufficient_magicoin") {
+            setStatus("Not enough magicoin to enter (need 10).", true);
+          } else if (d.data && d.data.error === "no_such_world") {
+            setStatus("That world no longer exists.", true);
+          } else {
+            setStatus("Could not enter world.", true);
+          }
+        })
+        .catch(function () { setStatus("Network error.", true); })
+        .finally(function () {
+          if (worldPreviewEnter) worldPreviewEnter.disabled = false;
+        });
+    });
+  }
+
+  if (worldPreviewCancel) worldPreviewCancel.addEventListener("click", closeWorldPreview);
+  if (worldPreviewModal) worldPreviewModal.addEventListener("click", function (e) {
+    if (e.target === worldPreviewModal) closeWorldPreview();
+  });
+  if (worldPreviewEnter) worldPreviewEnter.addEventListener("click", function () {
+    if (!selectedWorldForPreview) return;
+    var id = Number(selectedWorldForPreview.id || 0);
+    if (!id) return;
+    closeWorldPreview();
+    if (id === Number(currentWorldId)) {
+      fadeOutScreenMusicThen(function () {
+        location.href = "/play?_=" + Date.now();
+      });
+      return;
+    }
+    enterWorld(id);
+  });
+  attachFadedNav(backToGameLink);
+  attachFadedNav(backpackLink);
+
+  fetch("/api/worlds", { credentials: "same-origin" })
+    .then(function (r) {
+      if (r.status === 401) { location.href = "/login"; return null; }
+      return r.json();
+    })
+    .then(function (d) {
+      if (d) render(d);
+      if (d) applyScreenMusic(d, "worlds");
+    })
+    .catch(function () { grid.textContent = "Could not load worlds."; });
+
+  function isScreenMuted() {
+    try {
+      var v = localStorage.getItem("mmo_muted_v1");
+      if (v === "0") return false;
+      if (v === "1") return true;
+    } catch (e) {}
+    // Default to unmuted when no persisted choice exists.
+    return false;
+  }
+
+  var screenMusicAudio = null;
+  var screenMusicFadeTimer = null;
+  function stopScreenMusicFade() {
+    if (!screenMusicFadeTimer) return;
+    clearInterval(screenMusicFadeTimer);
+    screenMusicFadeTimer = null;
+  }
+  function fadeScreenMusicTo(targetVol, durationMs, onDone) {
+    if (!screenMusicAudio) {
+      if (typeof onDone === "function") onDone();
+      return;
+    }
+    stopScreenMusicFade();
+    var target = Math.max(0, Math.min(1, Number(targetVol) || 0));
+    var duration = Math.max(1, Number(durationMs) || 1);
+    var start = Math.max(0, Math.min(1, Number(screenMusicAudio.volume) || 0));
+    if (Math.abs(target - start) < 0.001) {
+      screenMusicAudio.volume = target;
+      if (typeof onDone === "function") onDone();
+      return;
+    }
+    var t0 = performance.now();
+    screenMusicFadeTimer = setInterval(function () {
+      var p = Math.max(0, Math.min(1, (performance.now() - t0) / duration));
+      var e = p * p * (3 - 2 * p);
+      screenMusicAudio.volume = start + (target - start) * e;
+      if (p >= 1) {
+        screenMusicAudio.volume = target;
+        stopScreenMusicFade();
+        if (typeof onDone === "function") onDone();
+      }
+    }, 20);
+  }
+
+  function fadeOutScreenMusicThen(next) {
+    if (!screenMusicAudio || isScreenMuted()) {
+      if (typeof next === "function") next();
+      return;
+    }
+    fadeScreenMusicTo(0, 260, function () {
+      try { screenMusicAudio.pause(); } catch (e) {}
+      if (typeof next === "function") next();
+    });
+  }
+
+  function attachFadedNav(linkEl) {
+    if (!linkEl) return;
+    linkEl.addEventListener("click", function (e) {
+      e.preventDefault();
+      var href = linkEl.getAttribute("href");
+      if (!href) return;
+      fadeOutScreenMusicThen(function () {
+        location.href = href;
+      });
+    });
+  }
+  function applyScreenMusic(d, key) {
+    if (screenMusicAudio) {
+      try { screenMusicAudio.pause(); } catch (e) {}
+      screenMusicAudio = null;
+    }
+    if (isScreenMuted()) return;
+    var cfg = (d.screen_music || {})[key] || {};
+    if (!cfg.url) return;
+    var rel = Number(cfg.vol);
+    if (!isFinite(rel)) rel = 100;
+    var mv = Number(d.music_volume);
+    if (!isFinite(mv)) mv = 25;
+    var a = new Audio(cfg.url);
+    a.loop = true;
+    a.volume = Math.min(1, (mv / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+    screenMusicAudio = a;
+  }
+
+  // Retry until music starts if autoplay is blocked.
+  var screenMusicAutoplayFallbackAttached = false;
+  function attachScreenMusicAutoplayFallback() {
+    if (screenMusicAutoplayFallbackAttached) return;
+    screenMusicAutoplayFallbackAttached = true;
+    function onFirstUserGesture() {
+      if (!screenMusicAudio) return;
+      if (isScreenMuted()) return;
+      try {
+        var cleanup = function () {
+          document.removeEventListener("pointerdown", onFirstUserGesture);
+          document.removeEventListener("touchstart", onFirstUserGesture);
+          document.removeEventListener("click", onFirstUserGesture);
+          document.removeEventListener("keydown", onFirstUserGesture);
+        };
+        var p = screenMusicAudio.play();
+        if (p && typeof p.then === "function") {
+          p.then(cleanup).catch(function () {});
+        } else if (!screenMusicAudio.paused) {
+          cleanup();
+        }
+      } catch (e) {}
+    }
+    document.addEventListener("pointerdown", onFirstUserGesture, { passive: true });
+    document.addEventListener("touchstart", onFirstUserGesture, { passive: true });
+    document.addEventListener("click", onFirstUserGesture);
+    document.addEventListener("keydown", onFirstUserGesture);
+  }
+  attachScreenMusicAutoplayFallback();
+})();
+</script>
+</body>
+</html>

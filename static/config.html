@@ -18,12 +18,9 @@ section{margin-bottom:2rem;}
 <p id="flash"></p>
 
 <section>
-<h2>World background</h2>
-<p>Upload a new image. The current <code>world.png</code> or <code>world.jpg</code> is moved into <code>data/archives/world/</code>.</p>
-<form method="post" action="/config/world" enctype="multipart/form-data">
-<input type="file" name="file" accept="image/png,image/jpeg" required>
-<button type="submit">Replace background</button>
-</form>
+<h2>Worlds</h2>
+<p>Each world has its own background and persistent NPC pets. <a href="/worlds">Open worlds chooser ↗</a></p>
+<div id="worlds-box">Loading…</div>
 </section>
 
 <section>
@@ -53,12 +50,96 @@ section{margin-bottom:2rem;}
 </section>
 
 <section>
+<h2>Event sounds</h2>
+<p>Optional sounds for switching worlds, shop purchases, magicoin gains, and pet defeats. Files must live in <code>static/sfx/</code>.</p>
+<div id="event-sfx-box">Loading…</div>
+</section>
+
+<section>
+<h2>Screen music</h2>
+<p>Looping background tracks for non-game screens. Tracks must live in <code>static/sfx/music/</code>.</p>
+<div id="screen-music-box">Loading…</div>
+</section>
+
+<section>
 <h2>Shadows</h2>
 <form method="post" action="/config/shadow">
 <label>Darkness <input type="range" name="darkness_pct" id="shadow-darkness-input" min="0" max="100" step="1"></label><br>
 <label>Height <input type="range" name="height_pct" id="shadow-height-input" min="50" max="160" step="1"></label><br>
 <label>Blur radius <input type="range" name="blur_px" id="shadow-blur-input" min="0" max="40" step="1"></label>
 <button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Quiz</h2>
+<form method="post" action="/config/quiz">
+<label>Math mode
+<select name="quiz_mode" id="quiz-mode-input">
+<option value="algebra_add_sub">Algebra Addition / Subtraction</option>
+<option value="plain_add_sub_2digit">Addition / Subtraction – 2 digit</option>
+<option value="plain_add_sub_chain">Addition / Subtraction – 2–3 digit chain</option>
+</select>
+</label>
+<p style="margin:0.35rem 0 0;font-size:0.95rem;color:#444;">Max operand size applies to algebra mode (variables and coefficients). Plain modes use two-digit numbers and chains as described.</p>
+<label>Max number (algebra mode) <input type="number" name="max_number" id="quiz-max-number-input" min="5" max="999" step="1"></label>
+<button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Login screen</h2>
+<p>Pick which world's background image is used as the login screen background. Login music can be set in the Screen music section above (look for the "Login screen" row).</p>
+<form method="post" action="/config/login">
+<label>Background world
+<select name="bg_world_id" id="login-bg-world-input">
+<option value="0">(random world)</option>
+</select>
+</label>
+<button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Shop / economy</h2>
+<p>Controls for creating pets from the backpack shop (stored in <code>meta</code>).</p>
+<form method="post" action="/config/shop/buy-pet-cost" style="margin-bottom:10px;">
+<label>Buy-a-pet cost (magicoin) <input type="number" name="cost" id="buy-pet-cost-input" min="0" max="100000" step="1"></label>
+<button type="submit">Save</button>
+</form>
+<form method="post" action="/config/shop/pet-size-limits">
+<label>Pet size min (px) <input type="number" name="size_min" id="pet-size-min-input" min="8" max="1024" step="1"></label>
+<label style="margin-left:12px;">Pet size max (px) <input type="number" name="size_max" id="pet-size-max-input" min="8" max="1024" step="1"></label>
+<button type="submit">Save</button>
+</form>
+</section>
+
+<section>
+<h2>Random transform</h2>
+<p>Swap your character into a random other player or NPC pet (size + 35px). Costs <strong style="color:#6495ed;">10</strong> magicoin.</p>
+<button type="button" id="recycle-random-btn">✨ Random transform (10 magicoin)</button>
+<span id="recycle-random-status" style="margin-left:10px;color:#1f9a43;"></span>
+</section>
+
+<section>
+<h2>Defeat Ball</h2>
+<div id="defeat-ball-current">Loading…</div>
+<form method="post" action="/config/defeat-ball/size" style="margin-top:8px;">
+<label>Ball size (px) <input type="number" name="size_px" id="defeat-ball-size-input" min="8" max="128" step="1"></label>
+<button type="submit">Save</button>
+</form>
+<form method="post" action="/config/defeat-ball/sprite" enctype="multipart/form-data" style="margin-top:8px;">
+<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required>
+<button type="submit">Upload ball image</button>
+</form>
+<form method="post" action="/config/defeat-ball/flip" style="display:inline-block;margin-top:8px;">
+<button type="submit">Flip ball image</button>
+</form>
+<form method="post" action="/config/defeat-ball/trim-white" style="display:inline-block;margin-top:8px;">
+<button type="submit">Trim ball white</button>
+</form>
+<form method="post" action="/config/defeat-ball/trim-bounds" style="display:inline-block;margin-top:8px;">
+<button type="submit">Trim ball bounds</button>
 </form>
 </section>
 
@@ -84,6 +165,43 @@ section{margin-bottom:2rem;}
 
 <script>
 (function () {
+  var AUDIO_SESSION_KEY = "mmo_audio_session_v1";
+  function markAudioSessionActive() {
+    try {
+      sessionStorage.setItem(AUDIO_SESSION_KEY, "1");
+    } catch (e) {}
+  }
+  var recycleBtn = document.getElementById("recycle-random-btn");
+  var recycleStatus = document.getElementById("recycle-random-status");
+  if (recycleBtn) {
+    recycleBtn.addEventListener("click", function () {
+      recycleBtn.disabled = true;
+      recycleStatus.style.color = "#1f9a43";
+      recycleStatus.textContent = "Transforming…";
+      fetch("/api/recycle", { method: "POST", credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.ok) {
+            recycleStatus.style.color = "#1f9a43";
+            recycleStatus.textContent = typeof data.magicoin === "number"
+              ? ("Transformed! Magicoin balance: " + data.magicoin)
+              : "Transformed!";
+          } else {
+            recycleStatus.style.color = "#d13d3d";
+            if (data && data.error === "no_targets") recycleStatus.textContent = "No other players or pets to copy.";
+            else if (data && data.error === "insufficient_magicoin") recycleStatus.textContent = "Not enough magicoin (need 10).";
+            else recycleStatus.textContent = "Could not transform.";
+          }
+        })
+        .catch(function () {
+          recycleStatus.style.color = "#d13d3d";
+          recycleStatus.textContent = "Could not transform.";
+        })
+        .finally(function () {
+          setTimeout(function () { recycleBtn.disabled = false; }, 600);
+        });
+    });
+  }
   var q = new URLSearchParams(location.search);
   var flash = document.getElementById("flash");
   if (q.get("saved") === "world") flash.textContent = "Background updated.";
@@ -101,6 +219,12 @@ section{margin-bottom:2rem;}
   else if (q.get("saved") === "shadow") flash.textContent = "Shadow settings saved.";
   else if (q.get("saved") === "sfx_volume") flash.textContent = "SFX volume saved.";
   else if (q.get("saved") === "music_volume") flash.textContent = "Music volume saved.";
+  else if (q.get("saved") === "defeat_ball") flash.textContent = "Defeat ball settings saved.";
+  else if (q.get("saved") === "quiz") flash.textContent = "Quiz settings saved.";
+  else if (q.get("saved") === "login") flash.textContent = "Login screen settings saved.";
+  else if (q.get("saved") === "economy") flash.textContent = "Shop / economy settings saved.";
+  else if (q.get("saved") === "magicoin") flash.textContent = "Magicoin balance updated.";
+  else if (q.get("saved") === "reset_captures") flash.textContent = "Captured pets reset for that user.";
   else if (q.get("saved") === "pet_add") flash.textContent = "Pet added.";
   else if (q.get("saved") === "pet_name") flash.textContent = "Pet name saved.";
   else if (q.get("saved") === "pet_stats") flash.textContent = "Pet size/speed saved.";
@@ -113,11 +237,13 @@ section{margin-bottom:2rem;}
       world_bad_image: "Background must be PNG or JPEG.",
       world_too_big: "Background file too large (max 2 MB).",
       bad_speech_font: "Speech text size must be between 10 and 48 px.",
+      bad_amount: "Magicoin amount must be a whole number.",
       bad_image: "Invalid image file.",
       file_too_big: "Image too large (max 2 MB).",
       no_user: "User not found.",
       no_pet: "Pet not found.",
       no_pet_sprite: "Pet image missing.",
+      no_defeat_ball: "No defeat ball image uploaded.",
       no_attack: "No attack sprite uploaded for that user.",
       flip_failed: "Could not mirror that image (try PNG/JPEG/WebP).",
       trim_failed: "Could not trim white background from that sprite.",
@@ -199,165 +325,202 @@ section{margin-bottom:2rem;}
         document.getElementById("shadow-darkness-input").value = Number(data.shadow_darkness_pct || 28);
         document.getElementById("shadow-height-input").value = Number(data.shadow_height_pct || 92);
         document.getElementById("shadow-blur-input").value = Number(data.shadow_blur_px || 0);
+        document.getElementById("defeat-ball-size-input").value = Number(data.defeat_ball_size_px || 28);
+        document.getElementById("quiz-max-number-input").value = Number(data.quiz_max_number || 30);
+        var qmEl = document.getElementById("quiz-mode-input");
+        if (qmEl) {
+          var qm = String(data.quiz_mode || "algebra_add_sub").trim();
+          if (
+            qm === "algebra_add_sub" ||
+            qm === "plain_add_sub_2digit" ||
+            qm === "plain_add_sub_chain"
+          ) {
+            qmEl.value = qm;
+          } else {
+            qmEl.value = "algebra_add_sub";
+          }
+        }
+        document.getElementById("buy-pet-cost-input").value = Number(data.buy_pet_cost || 150);
+        document.getElementById("pet-size-min-input").value = Number(data.pet_size_min || 25);
+        document.getElementById("pet-size-max-input").value = Number(data.pet_size_max || 175);
+        var loginBgSel = document.getElementById("login-bg-world-input");
+        if (loginBgSel) {
+          var worlds = Array.isArray(data.worlds) ? data.worlds : [];
+          var savedWid = Number(data.login_bg_world_id || 0);
+          var html = '<option value="0">(random world)</option>';
+          for (var wi = 0; wi < worlds.length; wi++) {
+            var w = worlds[wi];
+            var sel = Number(w.id) === savedWid ? " selected" : "";
+            html +=
+              '<option value="' + Number(w.id) + '"' + sel + ">" +
+              escapeHtml(w.name || ("World " + w.id)) +
+              (w.background_url ? "" : " — (no image)") +
+              "</option>";
+          }
+          loginBgSel.innerHTML = html;
+        }
+        document.getElementById("defeat-ball-current").innerHTML = data.defeat_ball_url
+          ? ('Current ball: <img class="thumb" src="' + escapeHtml(data.defeat_ball_url) + '" alt=""> <code>' + escapeHtml(data.defeat_ball_url) + "</code>")
+          : "No ball image uploaded. Defeated pets use a plain white circle.";
         document.getElementById("music-current").innerHTML = data.music_url
           ? ("Current music: <code>" + escapeHtml(data.music_url) + "</code>")
           : "No background music uploaded.";
-        var box = document.getElementById("users-box");
-        var rows = data.users.map(function (u) {
-          var flipped = u.sprite_flipped;
-          return (
-            "<tr><td>" +
-            escapeHtml(u.username) +
-            " <small>(#" +
-            u.id +
-            ")</small></td>" +
-            '<td><img class="thumb" src="' +
-            escapeHtml(u.sprite_url) +
-            '" alt=""></td>' +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/greeting">' +
-            '<input type="text" name="greeting" maxlength="64" style="width:11rem" value="' +
-            escapeAttr(u.shout_greeting || "Hello!") +
-            '"> ' +
-            '<button type="submit">Save shout</button>' +
-            "</form></td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/attack-sprite" enctype="multipart/form-data">' +
-            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
-            "<button type=\"submit\">Upload attack image</button>" +
-            "</form>" +
-            (u.attack_sprite_url
-              ? '<div style="margin-top:6px;"><img class="thumb" src="' +
-                escapeHtml(u.attack_sprite_url) +
-                '" alt=""></div>'
-              : "<div><small>No attack image</small></div>") +
-            "</td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/flip-attack-sprite">' +
-            "<button type=\"submit\">Flip attack image</button></form>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/trim-attack-white" style="margin-top:6px;">' +
-            '<button type="submit">Trim attack white</button>' +
-            "</form>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/trim-attack-bounds" style="margin-top:6px;">' +
-            '<button type="submit">Trim attack bounds</button>' +
-            "</form>" +
-            "<div><small>" +
-            (u.attack_sprite_flipped ? "Attack image is currently mirrored on disk." : "Attack image matches upload.") +
-            "</small></div></td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/sprite-width">' +
-            '<input type="number" name="sprite_width_px" min="16" max="512" step="1" style="width:6rem" value="' +
-            Number(u.sprite_width_px || 48) +
-            '"> ' +
-            '<button type="submit">Save width</button>' +
-            "</form></td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/sprite" enctype="multipart/form-data">' +
-            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
-            "<button type=\"submit\">Replace sprite</button>" +
-            "</form></td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/flip-sprite">' +
-            "<button type=\"submit\">" +
-            (flipped ? "Mirror file again (undo)" : "Mirror file horizontally") +
-            "</button></form>" +
-            "<div><small>" +
-            (flipped
-              ? "Sprite file is currently mirrored on disk."
-              : "Sprite file matches upload.") +
-            "</small></div>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/trim-white" style="margin-top:6px;">' +
-            '<button type="submit">Trim white → transparent PNG</button>' +
-            "</form>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/trim-bounds" style="margin-top:6px;">' +
-            '<button type="submit">Trim empty bounds</button>' +
-            "</form></td>" +
-            "<td>" +
-            '<form method="post" action="/config/users/' +
-            u.id +
-            '/delete" onsubmit="return confirm(\'Delete user ' +
-            escapeAttr(u.username) +
-            '?\');">' +
-            '<button type="submit">Delete</button>' +
-            "</form>" +
-            "</td></tr>"
-          );
-        });
-        box.innerHTML =
-          "<table><thead><tr><th>User</th><th>Sprite</th><th>Space-bar shout</th><th>Attack image</th><th>Attack tools</th><th>Sprite width</th><th>Replace</th><th>Sprite tools</th><th></th></tr></thead><tbody>" +
-          rows.join("") +
-          "</tbody></table>";
-
-        var pbox = document.getElementById("pets-box");
-        var petRows = (data.pets || []).map(function (p) {
-          return (
-            "<tr><td>" +
-            '<form method="post" action="/config/pets/' + p.id + '/name">' +
-            '<input type="text" name="name" maxlength="24" value="' + escapeAttr(p.name || "Pet") + '"> ' +
-            '<button type="submit">Save</button>' +
-            "</form>" +
-            '<form method="post" action="/config/pets/' + p.id + '/stats" style="margin-top:6px;">' +
-            'Size <input type="number" name="size_px" min="24" max="256" step="1" style="width:4.5rem" value="' + Number(p.size_px || 52) + '"> ' +
-            'Speed <input type="number" name="speed_px" min="0.2" max="4.0" step="0.1" style="width:4.5rem" value="' + Number(p.speed_px || 1).toFixed(1) + '"> ' +
-            '<button type="submit">Save</button></form></td>' +
-            "<td>" +
-            (p.sprite_url ? '<img class="thumb" src="' + escapeHtml(p.sprite_url) + '" alt="">' : "<small>None</small>") +
-            '<form method="post" action="/config/pets/' + p.id + '/sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
-            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
-            '<button type="submit">Upload</button></form></td>' +
-            "<td>" +
-            '<form method="post" action="/config/pets/' + p.id + '/flip-sprite"><button type="submit">Flip</button></form>' +
-            '<form method="post" action="/config/pets/' + p.id + '/trim-white" style="margin-top:6px;"><button type="submit">Trim white</button></form>' +
-            '<form method="post" action="/config/pets/' + p.id + '/trim-bounds" style="margin-top:6px;"><button type="submit">Trim bounds</button></form></td>' +
-            "<td>" +
-            (p.attack_sprite_url ? '<img class="thumb" src="' + escapeHtml(p.attack_sprite_url) + '" alt="">' : "<small>None</small>") +
-            '<form method="post" action="/config/pets/' + p.id + '/attack-sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
-            '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
-            '<button type="submit">Upload</button></form></td>' +
-            "<td>" +
-            '<form method="post" action="/config/pets/' + p.id + '/flip-attack-sprite"><button type="submit">Flip</button></form>' +
-            '<form method="post" action="/config/pets/' + p.id + '/trim-attack-white" style="margin-top:6px;"><button type="submit">Trim white</button></form>' +
-            '<form method="post" action="/config/pets/' + p.id + '/trim-attack-bounds" style="margin-top:6px;"><button type="submit">Trim bounds</button></form></td>' +
-            "<td>" +
-            '<form method="post" action="/config/pets/' + p.id + '/code-mode">' +
-            '<select name="code_mode">' +
-            '<option value="default"' + ((p.code_mode || "default") === "default" ? " selected" : "") + '>Default</option>' +
-            '<option value="code"' + ((p.code_mode || "default") === "code" ? " selected" : "") + '>Code</option>' +
-            '</select> ' +
-            '<button type="submit">Save</button></form>' +
-            '<div style="margin-top:6px;"><a href="/config/pets/' + p.id + '/code">Code Behavior</a></div>' +
-            "</td>" +
-            "<td>" +
-            '<form method="post" action="/config/pets/' + p.id + '/recenter" style="margin-bottom:6px;">' +
-            '<button type="submit">Recenter</button></form>' +
-            '<form method="post" action="/config/pets/' + p.id + '/delete" onsubmit="return confirm(\'Delete pet?\');">' +
-            '<button type="submit">Delete</button></form></td></tr>'
-          );
-        });
-        pbox.innerHTML =
-          "<table><thead><tr><th>Name</th><th>Sprite</th><th>Sprite tools</th><th>Attack</th><th>Attack tools</th><th>Behavior</th><th></th></tr></thead><tbody>" +
-          petRows.join("") +
-          "</tbody></table>";
+        renderScreenMusicBox(data.screen_music || {}, data.music_files || []);
+        applyConfigScreenMusic(data.screen_music || {}, Number(data.music_volume || 25));
+        fetch("/api/sfx/list", { credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.json() : { files: [] }; })
+          .then(function (sfxData) {
+            var files = (sfxData && sfxData.files) || [];
+            petAttackSfxFiles = files;
+            renderEventSfxBox(data.event_sfx || {}, files);
+            renderPetsBox(data.pets || []);
+            var box = document.getElementById("users-box");
+            var rows = data.users.map(function (u) {
+              var flipped = u.sprite_flipped;
+              return (
+                "<tr><td>" +
+                escapeHtml(u.username) +
+                " <small>(#" +
+                u.id +
+                ")</small></td>" +
+                '<td><img class="thumb" src="' +
+                escapeHtml(u.sprite_url) +
+                '" alt=""></td>' +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/greeting">' +
+                '<input type="text" name="greeting" maxlength="64" style="width:11rem" value="' +
+                escapeAttr(u.shout_greeting || "Hello!") +
+                '"> ' +
+                '<button type="submit">Save shout</button>' +
+                "</form></td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/attack-sprite" enctype="multipart/form-data">' +
+                '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+                "<button type=\"submit\">Upload attack image</button>" +
+                "</form>" +
+                (u.attack_sprite_url
+                  ? '<div style="margin-top:6px;"><img class="thumb" src="' +
+                    escapeHtml(u.attack_sprite_url) +
+                    '" alt=""></div>'
+                  : "<div><small>No attack image</small></div>") +
+                "</td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/flip-attack-sprite">' +
+                "<button type=\"submit\">Flip attack image</button></form>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/trim-attack-white" style="margin-top:6px;">' +
+                '<button type="submit">Trim attack white</button>' +
+                "</form>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/trim-attack-bounds" style="margin-top:6px;">' +
+                '<button type="submit">Trim attack bounds</button>' +
+                "</form>" +
+                "<div><small>" +
+                (u.attack_sprite_flipped ? "Attack image is currently mirrored on disk." : "Attack image matches upload.") +
+                "</small></div></td>" +
+                "<td>" +
+                buildUserSfxControl(u) +
+                "</td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/sprite-width">' +
+                '<input type="number" name="sprite_width_px" min="16" max="512" step="1" style="width:6rem" value="' +
+                Number(u.sprite_width_px || 48) +
+                '"> ' +
+                '<button type="submit">Save width</button>' +
+                "</form></td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/sprite" enctype="multipart/form-data">' +
+                '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+                "<button type=\"submit\">Replace sprite</button>" +
+                "</form></td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/flip-sprite">' +
+                "<button type=\"submit\">" +
+                (flipped ? "Mirror file again (undo)" : "Mirror file horizontally") +
+                "</button></form>" +
+                "<div><small>" +
+                (flipped
+                  ? "Sprite file is currently mirrored on disk."
+                  : "Sprite file matches upload.") +
+                "</small></div>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/trim-white" style="margin-top:6px;">' +
+                '<button type="submit">Trim white → transparent PNG</button>' +
+                "</form>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/trim-bounds" style="margin-top:6px;">' +
+                '<button type="submit">Trim empty bounds</button>' +
+                "</form></td>" +
+                "<td>" +
+                '<div style="display:flex;align-items:center;gap:6px;font-weight:700;">' +
+                  '<img src="/static-sprites/magicoin/coin.png" alt="" style="width:18px;height:18px;object-fit:contain;">' +
+                  '<span style="color:#6495ed;">' + Number(u.magicoin || 0) + '</span>' +
+                '</div>' +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/magicoin" style="margin-top:6px;">' +
+                  '<input type="number" name="delta" value="100" step="1" style="width:5.5rem"> ' +
+                  '<button type="submit">Add coins</button>' +
+                "</form>" +
+                '<small>Use a negative number to deduct.</small>' +
+                "</td>" +
+                "<td>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/reset-captures" style="margin-bottom:6px;" onsubmit="return confirm(\'Reset captured pets for ' +
+                escapeAttr(u.username) +
+                '?\');">' +
+                '<button type="submit">Reset captured pets</button>' +
+                "</form>" +
+                '<form method="post" action="/config/users/' +
+                u.id +
+                '/delete" onsubmit="return confirm(\'Delete user ' +
+                escapeAttr(u.username) +
+                '?\');">' +
+                '<button type="submit">Delete</button>' +
+                "</form>" +
+                "</td></tr>"
+              );
+            });
+            box.innerHTML =
+              "<table><thead><tr><th>User</th><th>Sprite</th><th>Space-bar shout</th><th>Attack image</th><th>Attack tools</th><th>Attack sound</th><th>Sprite width</th><th>Replace</th><th>Sprite tools</th><th>Magicoin</th><th></th></tr></thead><tbody>" +
+              rows.join("") +
+              "</tbody></table>";
+            var uranges = box.querySelectorAll(".user-sfx-range");
+            for (var uri = 0; uri < uranges.length; uri++) {
+              uranges[uri].addEventListener("input", function () {
+                var num = this.parentNode.querySelector(".user-sfx-num");
+                if (num) num.textContent = this.value;
+              });
+            }
+            var udemos = box.querySelectorAll(".user-sfx-demo");
+            for (var udi = 0; udi < udemos.length; udi++) {
+              udemos[udi].addEventListener("click", function () {
+                markAudioSessionActive();
+                var formEl = this.closest("form");
+                if (!formEl) return;
+                var sel = formEl.elements["file"];
+                var volEl = formEl.elements["volume_pct"];
+                demoPetAttackSfx(sel ? sel.value : "", volEl ? volEl.value : 100);
+              });
+            }
+          });
       })
       .catch(function () {
         document.getElementById("users-box").textContent = "Could not load users.";
@@ -376,7 +539,900 @@ section{margin-bottom:2rem;}
     return escapeHtml(s).replace(/'/g, "&#39;");
   }
 
+  var petAttackSfxFiles = [];
+
+  function buildUserSfxControl(u) {
+    var cur = u.attack_sfx_file || "";
+    var vol = Number(u.attack_sfx_volume_pct);
+    if (!isFinite(vol)) vol = 100;
+    var opts = ['<option value="">(none)</option>'];
+    for (var i = 0; i < petAttackSfxFiles.length; i++) {
+      var f = petAttackSfxFiles[i];
+      var sel = f === cur ? " selected" : "";
+      opts.push('<option value="' + escapeAttr(f) + '"' + sel + ">" + escapeHtml(f) + "</option>");
+    }
+    return (
+      '<form onsubmit="return saveUserAttackSfx(event,' + u.id + ');">' +
+      '<select name="file">' + opts.join("") + "</select>" +
+      '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;">' +
+      '<input type="range" name="volume_pct" min="0" max="100" step="1" value="' + vol +
+      '" class="user-sfx-range"><span class="user-sfx-num">' + vol + "</span>%" +
+      "</div>" +
+      '<div style="margin-top:4px;display:flex;gap:6px;">' +
+      '<button type="submit">Save</button>' +
+      '<button type="button" class="user-sfx-demo">Demo</button>' +
+      "</div></form>"
+    );
+  }
+
+  function buildPetSfxControl(p) {
+    var cur = p.attack_sfx_file || "";
+    var vol = Number(p.attack_sfx_volume_pct);
+    if (!isFinite(vol)) vol = 100;
+    var opts = ['<option value="">(none)</option>'];
+    for (var i = 0; i < petAttackSfxFiles.length; i++) {
+      var f = petAttackSfxFiles[i];
+      var sel = f === cur ? " selected" : "";
+      opts.push('<option value="' + escapeAttr(f) + '"' + sel + ">" + escapeHtml(f) + "</option>");
+    }
+    var applyIds = Array.isArray(p.instance_ids) ? p.instance_ids.join(",") : String(p.id);
+    return (
+      '<form onsubmit="return savePetAttackSfx(event,' + p.id + ');" data-pet-id="' + p.id + '">' +
+      '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+      '<select name="file">' + opts.join("") + "</select>" +
+      '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;">' +
+      '<input type="range" name="volume_pct" min="0" max="100" step="1" value="' + vol +
+      '" class="pet-sfx-range"><span class="pet-sfx-num">' + vol + "</span>%" +
+      '</div>' +
+      '<div style="margin-top:4px;display:flex;gap:6px;">' +
+      '<button type="submit">Save</button>' +
+      '<button type="button" class="pet-sfx-demo">Demo</button>' +
+      "</div></form>"
+    );
+  }
+
+  window.savePetAttackSfx = function (ev, petId) {
+    ev.preventDefault();
+    var fd = new FormData(ev.target);
+    fetch("/api/pets/" + petId + "/attack-sfx", {
+      method: "POST",
+      credentials: "same-origin",
+      body: fd
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        flash.textContent = d && d.ok ? "Pet attack sound saved." : "Could not save pet attack sound.";
+      })
+      .catch(function () {
+        flash.textContent = "Could not save pet attack sound.";
+      });
+    return false;
+  };
+
+  window.saveUserAttackSfx = function (ev, userId) {
+    ev.preventDefault();
+    var fd = new FormData(ev.target);
+    fetch("/api/users/" + userId + "/attack-sfx", {
+      method: "POST",
+      credentials: "same-origin",
+      body: fd
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        flash.textContent =
+          d && d.ok ? "User attack sound saved." : "Could not save user attack sound.";
+      })
+      .catch(function () {
+        flash.textContent = "Could not save user attack sound.";
+      });
+    return false;
+  };
+
+  function demoPetAttackSfx(fname, relVol) {
+    markAudioSessionActive();
+    if (!fname) return;
+    var mv = Number(document.getElementById("sfx-volume-input").value) || 35;
+    var rel = Number(relVol);
+    if (!isFinite(rel)) rel = 100;
+    var a = new Audio("/sfx/" + encodeURIComponent(fname));
+    a.volume = Math.min(1, (mv / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+
+  function renderPetsBox(pets) {
+    var pbox = document.getElementById("pets-box");
+    if (!pbox) return;
+    var petRows = pets.map(function (p) {
+      var applyIds = Array.isArray(p.instance_ids) ? p.instance_ids.join(",") : String(p.id);
+      var count = Math.max(1, Number(p.instance_count || 1));
+      return (
+        "<tr><td>" +
+        '<div style="margin-bottom:6px;"><small style="color:#666;">Type instances: ' + count + "</small></div>" +
+        '<form method="post" action="/config/pets/' + p.id + '/name">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<input type="text" name="name" maxlength="24" value="' + escapeAttr(p.name || "Pet") + '"> ' +
+        '<button type="submit">Save</button>' +
+        "</form>" +
+        '<form method="post" action="/config/pets/' + p.id + '/stats" style="margin-top:6px;">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        'Size <input type="number" name="size_px" min="24" max="256" step="1" style="width:4.5rem" value="' + Number(p.size_px || 52) + '"> ' +
+        'Speed <input type="number" name="speed_px" min="0.2" max="4.0" step="0.1" style="width:4.5rem" value="' + Number(p.speed_px || 1).toFixed(1) + '"> ' +
+        '<button type="submit">Save</button></form></td>' +
+        "<td>" +
+        (p.sprite_url ? '<img class="thumb" src="' + escapeHtml(p.sprite_url) + '" alt="">' : "<small>None</small>") +
+        '<form method="post" action="/config/pets/' + p.id + '/sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+        '<button type="submit">Upload</button></form></td>' +
+        "<td>" +
+        '<form method="post" action="/config/pets/' + p.id + '/flip-sprite"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Flip</button></form>' +
+        '<form method="post" action="/config/pets/' + p.id + '/trim-white" style="margin-top:6px;"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Trim white</button></form>' +
+        '<form method="post" action="/config/pets/' + p.id + '/trim-bounds" style="margin-top:6px;"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Trim bounds</button></form></td>' +
+        "<td>" +
+        (p.attack_sprite_url ? '<img class="thumb" src="' + escapeHtml(p.attack_sprite_url) + '" alt="">' : "<small>None</small>") +
+        '<form method="post" action="/config/pets/' + p.id + '/attack-sprite" enctype="multipart/form-data" style="margin-top:6px;">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required> ' +
+        '<button type="submit">Upload</button></form></td>' +
+        "<td>" +
+        '<form method="post" action="/config/pets/' + p.id + '/flip-attack-sprite"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Flip</button></form>' +
+        '<form method="post" action="/config/pets/' + p.id + '/trim-attack-white" style="margin-top:6px;"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Trim white</button></form>' +
+        '<form method="post" action="/config/pets/' + p.id + '/trim-attack-bounds" style="margin-top:6px;"><input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '"><button type="submit">Trim bounds</button></form></td>' +
+        "<td>" + buildPetSfxControl(p) + "</td>" +
+        "<td>" +
+        '<form method="post" action="/config/pets/' + p.id + '/code-mode">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<select name="code_mode">' +
+        '<option value="default"' + ((p.code_mode || "default") === "default" ? " selected" : "") + '>Default</option>' +
+        '<option value="code"' + ((p.code_mode || "default") === "code" ? " selected" : "") + '>Code</option>' +
+        '</select> ' +
+        '<button type="submit">Save</button></form>' +
+        '<div style="margin-top:6px;"><a href="/config/pets/' + p.id + '/code?apply_to_ids=' + encodeURIComponent(applyIds) + '">Code Behavior</a></div>' +
+        "</td>" +
+        "<td>" +
+        '<form method="post" action="/config/pets/' + p.id + '/recenter" style="margin-bottom:6px;">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<button type="submit">Recenter</button></form>' +
+        '<form method="post" action="/config/pets/' + p.id + '/delete" onsubmit="return confirm(\'Delete pet?\');">' +
+        '<input type="hidden" name="apply_to_ids" value="' + escapeAttr(applyIds) + '">' +
+        '<button type="submit">Delete</button></form></td></tr>'
+      );
+    });
+    pbox.innerHTML =
+      "<table><thead><tr><th>Name</th><th>Sprite</th><th>Sprite tools</th><th>Attack</th><th>Attack tools</th><th>Attack sound</th><th>Behavior</th><th></th></tr></thead><tbody>" +
+      petRows.join("") +
+      "</tbody></table>";
+    var ranges = pbox.querySelectorAll(".pet-sfx-range");
+    for (var ri = 0; ri < ranges.length; ri++) {
+      ranges[ri].addEventListener("input", function () {
+        var num = this.parentNode.querySelector(".pet-sfx-num");
+        if (num) num.textContent = this.value;
+      });
+    }
+    var demos = pbox.querySelectorAll(".pet-sfx-demo");
+    for (var di = 0; di < demos.length; di++) {
+      demos[di].addEventListener("click", function () {
+        var formEl = this.closest("form");
+        if (!formEl) return;
+        var sel = formEl.elements["file"];
+        var volEl = formEl.elements["volume_pct"];
+        demoPetAttackSfx(sel ? sel.value : "", volEl ? volEl.value : 100);
+      });
+    }
+  }
+
+  var EVENT_SFX_ROWS = [
+    { key: "world_enter", label: "Enter world (after load)" },
+    { key: "world_change", label: "Begin switching worlds" },
+    { key: "shop", label: "Shop purchase" },
+    { key: "magicoin", label: "Gain magicoin" },
+    { key: "pet_defeat", label: "Defeat pet" },
+    { key: "player_death", label: "Player dies" },
+    { key: "quiz_correct", label: "Correct quiz answer" },
+    { key: "quiz_wrong", label: "Wrong quiz answer" }
+  ];
+
+  function buildSfxOptions(files, current) {
+    var o = ['<option value="">(none)</option>'];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var sel = f === current ? " selected" : "";
+      o.push('<option value="' + escapeAttr(f) + '"' + sel + ">" + escapeHtml(f) + "</option>");
+    }
+    return o.join("");
+  }
+
+  function demoEventSfx(fname, relVol) {
+    markAudioSessionActive();
+    if (!fname) return;
+    var mv = Number(document.getElementById("sfx-volume-input").value) || 35;
+    var rel = Number(relVol);
+    if (!Number.isFinite(rel)) rel = 100;
+    var a = new Audio("/sfx/" + encodeURIComponent(fname));
+    a.volume = Math.min(1, (mv / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+
+  function renderEventSfxBox(evtCfg, files) {
+    var box = document.getElementById("event-sfx-box");
+    if (!box) return;
+    if (!files.length) {
+      box.textContent = "Add audio files to static/sfx first.";
+      return;
+    }
+    var rows = EVENT_SFX_ROWS.map(function (row) {
+      var cfg = (evtCfg && evtCfg[row.key]) || {};
+      var fn = cfg.file || "";
+      var vol = Number(cfg.vol);
+      if (!Number.isFinite(vol)) vol = 100;
+      var opts = buildSfxOptions(files, fn);
+      return (
+        "<tr><td>" +
+        escapeHtml(row.label) +
+        '</td><td><select name="' +
+        escapeAttr(row.key) +
+        '_file">' +
+        opts +
+        '</select></td><td><label style="display:flex;align-items:center;gap:8px;"><input type="range" name="' +
+        escapeAttr(row.key) +
+        '_vol" min="0" max="100" step="1" value="' +
+        vol +
+        '" class="evt-vol-range"><span class="evt-vol-num">' +
+        vol +
+        '</span>%</label></td><td><button type="button" class="evt-demo-btn" data-key="' +
+        escapeAttr(row.key) +
+        '">Demo</button></td></tr>'
+      );
+    });
+    box.innerHTML =
+      '<form id="event-sfx-form">' +
+      "<table><thead><tr><th>Event</th><th>Sound</th><th>Relative volume</th><th></th></tr></thead><tbody>" +
+      rows.join("") +
+      "</tbody></table>" +
+      '<p><button type="submit">Save event sounds</button> <span id="event-sfx-status"></span></p>' +
+      "</form>";
+    var form = document.getElementById("event-sfx-form");
+    if (form) {
+      form.addEventListener("submit", saveEventSfxSubmit);
+    }
+    var rngs = box.querySelectorAll(".evt-vol-range");
+    for (var ri = 0; ri < rngs.length; ri++) {
+      rngs[ri].addEventListener("input", function () {
+        var sp = this.parentNode.querySelector(".evt-vol-num");
+        if (sp) sp.textContent = this.value;
+      });
+    }
+    var dbtns = box.querySelectorAll(".evt-demo-btn");
+    for (var di = 0; di < dbtns.length; di++) {
+      dbtns[di].addEventListener("click", function () {
+        var key = this.getAttribute("data-key");
+        var formEl = document.getElementById("event-sfx-form");
+        if (!formEl || !key) return;
+        var sel = formEl.elements[key + "_file"];
+        var volEl = formEl.elements[key + "_vol"];
+        demoEventSfx(sel ? sel.value : "", volEl ? volEl.value : 100);
+      });
+    }
+  }
+
+  var configScreenMusicAudio = null;
+
+  function isMutedPersistedConfig() {
+    try {
+      if (!sessionStorage.getItem(AUDIO_SESSION_KEY)) return true;
+      var v = localStorage.getItem("mmo_muted_v1");
+      if (v === "0") return false;
+      if (v === "1") return true;
+    } catch (e) {}
+    return true;
+  }
+
+  function applyConfigScreenMusic(scrCfg, mv) {
+    if (configScreenMusicAudio) {
+      try { configScreenMusicAudio.pause(); } catch (e) {}
+      configScreenMusicAudio = null;
+    }
+    if (isMutedPersistedConfig()) return;
+    var cfg = (scrCfg && scrCfg.config) || {};
+    if (!cfg.url) return;
+    var rel = Number(cfg.vol);
+    if (!isFinite(rel)) rel = 100;
+    var globalMv = Number(mv);
+    if (!isFinite(globalMv)) globalMv = 25;
+    var a = new Audio(cfg.url);
+    a.loop = true;
+    a.volume = Math.min(1, (globalMv / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+    configScreenMusicAudio = a;
+  }
+
+  var SCREEN_MUSIC_ROWS = [
+    { key: "backpack", label: "Backpack" },
+    { key: "worlds", label: "Worlds list" },
+    { key: "config", label: "Config" },
+    { key: "login", label: "Login screen" }
+  ];
+
+  var screenMusicDemoAudio = null;
+
+  function stopScreenMusicDemo() {
+    if (screenMusicDemoAudio) {
+      try { screenMusicDemoAudio.pause(); } catch (e) {}
+      screenMusicDemoAudio = null;
+    }
+  }
+
+  function demoScreenMusic(fname, relVol) {
+    markAudioSessionActive();
+    stopScreenMusicDemo();
+    if (!fname) return;
+    var mv = Number(document.getElementById("music-volume-input").value) || 25;
+    var rel = Number(relVol);
+    if (!isFinite(rel)) rel = 100;
+    var a = new Audio("/music/" + encodeURIComponent(fname));
+    a.loop = false;
+    a.volume = Math.min(1, (mv / 100) * (rel / 100));
+    screenMusicDemoAudio = a;
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+
+  function renderScreenMusicBox(scrCfg, files) {
+    var box = document.getElementById("screen-music-box");
+    if (!box) return;
+    if (!files.length) {
+      box.textContent = "Add audio files to static/sfx/music first.";
+      return;
+    }
+    function buildOpts(cur) {
+      var html = '<option value="">(none)</option>';
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i];
+        html += '<option value="' + escapeAttr(f) + '"' +
+          (f === cur ? " selected" : "") + ">" + escapeHtml(f) + "</option>";
+      }
+      return html;
+    }
+    var rows = SCREEN_MUSIC_ROWS.map(function (row) {
+      var cfg = (scrCfg && scrCfg[row.key]) || {};
+      var fn = cfg.file || "";
+      var vol = Number(cfg.vol);
+      if (!isFinite(vol)) vol = 100;
+      return (
+        "<tr><td>" + escapeHtml(row.label) +
+        '</td><td><select name="' + escapeAttr(row.key) + '_file">' + buildOpts(fn) + "</select></td>" +
+        '<td><label style="display:flex;align-items:center;gap:8px;">' +
+        '<input type="range" name="' + escapeAttr(row.key) + '_vol" min="0" max="100" step="1" value="' + vol +
+        '" class="scr-vol-range"><span class="scr-vol-num">' + vol + "</span>%</label></td>" +
+        '<td><button type="button" class="scr-demo-btn" data-key="' + escapeAttr(row.key) + '">Demo</button> ' +
+        '<button type="button" class="scr-stop-btn">Stop</button></td></tr>'
+      );
+    });
+    box.innerHTML =
+      '<form id="screen-music-form">' +
+      "<table><thead><tr><th>Screen</th><th>Track</th><th>Relative volume</th><th></th></tr></thead><tbody>" +
+      rows.join("") +
+      "</tbody></table>" +
+      '<p><button type="submit">Save screen music</button> <span id="screen-music-status"></span></p>' +
+      "</form>";
+    var form = document.getElementById("screen-music-form");
+    if (form) form.addEventListener("submit", saveScreenMusicSubmit);
+    var rngs = box.querySelectorAll(".scr-vol-range");
+    for (var ri = 0; ri < rngs.length; ri++) {
+      rngs[ri].addEventListener("input", function () {
+        var sp = this.parentNode.querySelector(".scr-vol-num");
+        if (sp) sp.textContent = this.value;
+      });
+    }
+    var dbtns = box.querySelectorAll(".scr-demo-btn");
+    for (var di = 0; di < dbtns.length; di++) {
+      dbtns[di].addEventListener("click", function () {
+        var key = this.getAttribute("data-key");
+        var formEl = document.getElementById("screen-music-form");
+        if (!formEl || !key) return;
+        var sel = formEl.elements[key + "_file"];
+        var volEl = formEl.elements[key + "_vol"];
+        demoScreenMusic(sel ? sel.value : "", volEl ? volEl.value : 100);
+      });
+    }
+    var sbtns = box.querySelectorAll(".scr-stop-btn");
+    for (var si = 0; si < sbtns.length; si++) {
+      sbtns[si].addEventListener("click", stopScreenMusicDemo);
+    }
+  }
+
+  function saveScreenMusicSubmit(ev) {
+    ev.preventDefault();
+    var form = ev.target;
+    var payload = {};
+    for (var i = 0; i < SCREEN_MUSIC_ROWS.length; i++) {
+      var k = SCREEN_MUSIC_ROWS[i].key;
+      payload[k] = {
+        file: form.elements[k + "_file"].value,
+        vol: Number(form.elements[k + "_vol"].value)
+      };
+    }
+    var status = document.getElementById("screen-music-status");
+    fetch("/api/config/screen-music", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (status) status.textContent = d && d.ok ? "Saved." : "Could not save.";
+      })
+      .catch(function () {
+        if (status) status.textContent = "Could not save.";
+      });
+  }
+
+  function saveEventSfxSubmit(ev) {
+    ev.preventDefault();
+    var form = ev.target;
+    var payload = {};
+    for (var i = 0; i < EVENT_SFX_ROWS.length; i++) {
+      var k = EVENT_SFX_ROWS[i].key;
+      payload[k] = {
+        file: form.elements[k + "_file"].value,
+        vol: Number(form.elements[k + "_vol"].value)
+      };
+    }
+    var status = document.getElementById("event-sfx-status");
+    fetch("/api/config/event-sfx", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (status) status.textContent = d && d.ok ? "Saved." : "Could not save.";
+      })
+      .catch(function () {
+        if (status) status.textContent = "Could not save.";
+      });
+  }
+
+  var worldMusicList = [];
+  function loadWorldMusicList() {
+    return fetch("/api/worlds/music/list", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : { files: [] }; })
+      .then(function (d) { worldMusicList = (d && d.files) || []; });
+  }
+  function buildMusicSelect(worldId, current) {
+    var opts = ['<option value="">(none)</option>'];
+    for (var i = 0; i < worldMusicList.length; i++) {
+      var f = worldMusicList[i];
+      var sel = f === current ? " selected" : "";
+      opts.push('<option value="' + escapeAttr(f) + '"' + sel + ">" + escapeHtml(f) + "</option>");
+    }
+    return (
+      '<form onsubmit="return saveWorldMusic(event,' + worldId + ');">' +
+      '<select name="music_file">' + opts.join("") + "</select>" +
+      ' <button type="submit">Save music</button>' +
+      "</form>"
+    );
+  }
+
+  function buildMusicVolHtml(w) {
+    var v = Number(w.music_volume_pct);
+    if (!Number.isFinite(v)) v = 100;
+    return (
+      '<form style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0;" onsubmit="return saveWorldMusicVol(event,' +
+      w.id +
+      ');">' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;">' +
+      '<input type="range" name="volume_pct" min="0" max="100" step="1" value="' +
+      v +
+      '" class="world-vol-range"> <span class="world-vol-num">' +
+      v +
+      '</span>%</label>' +
+      '<button type="submit">Save vol</button></form>' +
+      '<button type="button" class="world-music-demo" data-url="' +
+      escapeAttr(w.music_url || "") +
+      '" data-vol="' +
+      v +
+      '">Demo track</button>'
+    );
+  }
+
+  function loadWorlds() {
+    var box = document.getElementById("worlds-box");
+    if (!box) return;
+    Promise.all([
+      fetch("/api/worlds", { credentials: "same-origin" }).then(function (r) {
+        if (r.status === 401) { location.href = "/login"; return null; }
+        return r.json();
+      }),
+      loadWorldMusicList(),
+    ]).then(function (results) {
+      var data = results[0];
+      if (!data) return;
+      var worldPets = data.world_pets || {};
+      var petCatalog = Array.isArray(data.pet_catalog) ? data.pet_catalog : [];
+      var worldPetTargetCount = data.world_pet_target_count || {};
+      var obstacleConfigs = data.obstacle_configs || {};
+      var obstaclesByWorld = data.obstacles_by_world || {};
+      function renderWorldPetManager(w) {
+        var list = Array.isArray(worldPets[String(w.id)]) ? worldPets[String(w.id)] : (Array.isArray(worldPets[w.id]) ? worldPets[w.id] : []);
+        var targetCount = Number(worldPetTargetCount[String(w.id)] || worldPetTargetCount[w.id] || 5);
+        if (!Number.isFinite(targetCount)) targetCount = 5;
+        targetCount = Math.max(0, Math.min(5, targetCount));
+        var items = "";
+        for (var pi = 0; pi < list.length; pi++) {
+          var p = list[pi];
+          var thumb = p.sprite_url
+            ? ('<img class="thumb" src="' + escapeHtml(p.sprite_url) + '" alt="" style="max-height:22px;max-width:22px;margin-right:6px;vertical-align:middle;">')
+            : "";
+          items +=
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">' +
+            '<span>' + thumb + escapeHtml(p.name || ("Pet type #" + p.id)) + ' <small style="color:#666;">(type #' + Number(p.id) + ')</small></span>' +
+            '<button type="button" class="world-pet-delete" data-world-id="' + Number(w.id) + '" data-pet-id="' + Number(p.id) + '">Delete</button>' +
+            "</div>";
+        }
+        if (!items) items = '<div style="color:#777;"><small>No pet types assigned to this world.</small></div>';
+        var options = "";
+        for (var ci = 0; ci < petCatalog.length; ci++) {
+          var tpl = petCatalog[ci];
+          options += '<option value="' + Number(tpl.id) + '">' + escapeHtml(tpl.name || ("Pet type #" + tpl.id)) + " (type #" + Number(tpl.id) + ")</option>";
+        }
+        if (!options) options = '<option value="">No templates available</option>';
+        return (
+          '<div style="min-width:280px;">' +
+          '<div style="margin-bottom:6px;font-weight:700;font-size:12px;color:#456;">Pet types in this world</div>' +
+          '<form class="world-pet-settings-form" data-world-id="' + Number(w.id) + '" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">' +
+          '<label>Max per screen <input type="number" name="target_count" min="0" max="5" step="1" value="' + targetCount + '" style="width:4.5rem;"></label>' +
+          '<button type="submit">Save max</button>' +
+          "</form>" +
+          '<div style="max-height:130px;overflow:auto;border:1px solid #e1e6f0;border-radius:6px;padding:6px 8px;background:#fafcff;">' +
+          items +
+          "</div>" +
+          '<form class="world-pet-add-form" data-world-id="' + Number(w.id) + '" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
+          '<select name="template_pet_id" style="min-width:170px;">' + options + "</select>" +
+          '<button type="submit">Add pet type</button>' +
+          "</form>" +
+          '<small style="display:block;color:#666;margin-top:6px;">Assigned pet types spawn randomly per environment screen and will not exceed the max.</small>' +
+          "</div>"
+        );
+      }
+      function renderWorldObstacleManager(w) {
+        var cfg = obstacleConfigs[String(w.id)] || obstacleConfigs[w.id] || {
+          sprite_url: "",
+          min_width_px: 80,
+          max_width_px: 180,
+          obstacle_count: 6,
+          sprite_flipped: 0
+        };
+        var existing = Array.isArray(obstaclesByWorld[String(w.id)])
+          ? obstaclesByWorld[String(w.id)]
+          : (Array.isArray(obstaclesByWorld[w.id]) ? obstaclesByWorld[w.id] : []);
+        var preview = cfg.sprite_url
+          ? ('<img class="thumb" src="' + escapeHtml(cfg.sprite_url) + '" alt="" style="max-height:38px;">')
+          : '<span style="color:#888;">No image</span>';
+        return (
+          '<div style="min-width:320px;">' +
+          '<div style="margin-bottom:6px;font-weight:700;font-size:12px;color:#456;">Static obstacles</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">' +
+          preview +
+          '<small style="color:#666;">Existing: ' + Number(existing.length || 0) + '</small>' +
+          "</div>" +
+          '<form class="world-obstacle-upload-form" data-world-id="' + Number(w.id) + '" enctype="multipart/form-data" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">' +
+          '<input type="file" name="file" accept="image/png,image/jpeg,image/gif,image/webp" required>' +
+          '<button type="submit">Upload image</button>' +
+          "</form>" +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">' +
+          '<button type="button" class="world-obstacle-flip" data-world-id="' + Number(w.id) + '">Flip</button>' +
+          '<button type="button" class="world-obstacle-trim-white" data-world-id="' + Number(w.id) + '">Trim white</button>' +
+          '<button type="button" class="world-obstacle-trim-bounds" data-world-id="' + Number(w.id) + '">Trim empty</button>' +
+          "</div>" +
+          '<form class="world-obstacle-settings-form" data-world-id="' + Number(w.id) + '" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">' +
+          '<label>Min width <input type="number" name="min_width_px" min="24" max="640" step="1" value="' + Number(cfg.min_width_px || 80) + '" style="width:5.5rem;"></label>' +
+          '<label>Max width <input type="number" name="max_width_px" min="24" max="640" step="1" value="' + Number(cfg.max_width_px || 180) + '" style="width:5.5rem;"></label>' +
+          '<label>Count <input type="number" name="obstacle_count" min="0" max="64" step="1" value="' + Number(cfg.obstacle_count || 6) + '" style="width:4.5rem;"></label>' +
+          '<button type="submit">Save</button>' +
+          "</form>" +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<button type="button" class="world-obstacle-randomize" data-world-id="' + Number(w.id) + '">Random position / reposition</button>' +
+          '<button type="button" class="world-obstacle-delete-all" data-world-id="' + Number(w.id) + '">Delete all obstacles</button>' +
+          "</div>" +
+          "</div>"
+        );
+      }
+      var rows = (data.worlds || []).map(function (w) {
+        var thumb = w.background_url
+          ? '<img class="thumb" src="' + escapeHtml(w.background_url) + '" alt="">'
+          : '<span style="color:#888;">none</span>';
+        return (
+          '<tr data-world-id="' + w.id + '">' +
+          "<td>" + thumb + "</td>" +
+          '<td><form onsubmit="return saveWorldName(event,' + w.id + ');">' +
+            '<input type="text" name="name" value="' + escapeAttr(w.name || "World") + '" maxlength="48">' +
+            "<button type=\"submit\">Save name</button>" +
+            "</form></td>" +
+          '<td><form enctype="multipart/form-data" onsubmit="return saveWorldBg(event,' + w.id + ');">' +
+            '<input type="file" name="file" accept="image/png,image/jpeg" required>' +
+            "<button type=\"submit\">Upload background</button>" +
+            "</form></td>" +
+          "<td>" + renderWorldPetManager(w) + "</td>" +
+          "<td>" + renderWorldObstacleManager(w) + "</td>" +
+          "<td>" + buildMusicSelect(w.id, w.music_file || "") + "</td>" +
+          "<td>" + buildMusicVolHtml(w) + "</td>" +
+          '<td><button type="button" onclick="deleteWorld(' + w.id + ')">Delete world</button></td>' +
+          "</tr>"
+        );
+      });
+      box.innerHTML =
+        "<table><thead><tr><th>Background</th><th>Name</th><th>Background image</th><th>Environment pets</th><th>Obstacles</th><th>Music track</th><th>Track volume</th><th>Actions</th></tr></thead><tbody>" +
+        rows.join("") +
+        "</tbody></table>" +
+        "<p style=\"margin-top:8px;color:#555;font-size:12px;\">Place audio files in <code>static/music/</code> to make them selectable.</p>";
+      var wr = box.querySelectorAll(".world-vol-range");
+      for (var wi = 0; wi < wr.length; wi++) {
+        wr[wi].addEventListener("input", function () {
+          var num = this.parentNode.querySelector(".world-vol-num");
+          if (num) num.textContent = this.value;
+        });
+      }
+      var wd = box.querySelectorAll(".world-music-demo");
+      for (var wdi = 0; wdi < wd.length; wdi++) {
+        wd[wdi].addEventListener("click", function () {
+          demoWorldTrack(this.getAttribute("data-url"), this.getAttribute("data-vol"));
+        });
+      }
+      var addForms = box.querySelectorAll(".world-pet-add-form");
+      for (var afi = 0; afi < addForms.length; afi++) {
+        addForms[afi].addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          var form = ev.target;
+          var worldId = Number(form.getAttribute("data-world-id") || 0);
+          var tpl = String((form.elements["template_pet_id"] && form.elements["template_pet_id"].value) || "").trim();
+          if (!worldId || !tpl) return false;
+          var fd = new FormData();
+          fd.append("template_pet_id", tpl);
+          fetch("/api/worlds/" + worldId + "/pets/add-existing", {
+            method: "POST",
+            credentials: "same-origin",
+            body: fd
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d && d.ok) flash.textContent = "Pet added to world.";
+              else if (d && d.error === "no_such_template") flash.textContent = "Template pet not found.";
+              else flash.textContent = "Could not add pet.";
+              loadWorlds();
+              load();
+            })
+            .catch(function () {
+              flash.textContent = "Could not add pet.";
+            });
+          return false;
+        });
+      }
+      var petSettingsForms = box.querySelectorAll(".world-pet-settings-form");
+      for (var psfi = 0; psfi < petSettingsForms.length; psfi++) {
+        petSettingsForms[psfi].addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          var form = ev.target;
+          var worldId = Number(form.getAttribute("data-world-id") || 0);
+          var targetCount = String((form.elements["target_count"] && form.elements["target_count"].value) || "").trim();
+          if (!worldId) return false;
+          var fd = new FormData();
+          fd.append("target_count", targetCount);
+          fetch("/api/worlds/" + worldId + "/pets/settings", {
+            method: "POST",
+            credentials: "same-origin",
+            body: fd
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              flash.textContent = d && d.ok ? "Pet max saved." : "Could not save pet max.";
+              loadWorlds();
+            })
+            .catch(function () {
+              flash.textContent = "Could not save pet max.";
+            });
+          return false;
+        });
+      }
+      var delBtns = box.querySelectorAll(".world-pet-delete");
+      for (var dpi = 0; dpi < delBtns.length; dpi++) {
+        delBtns[dpi].addEventListener("click", function () {
+          var worldId = Number(this.getAttribute("data-world-id") || 0);
+          var petId = Number(this.getAttribute("data-pet-id") || 0);
+          if (!worldId || !petId) return;
+          if (!confirm("Delete this pet from the world?")) return;
+          fetch("/api/worlds/" + worldId + "/pets/" + petId + "/delete", {
+            method: "POST",
+            credentials: "same-origin"
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (d && d.ok) flash.textContent = "Pet deleted from world.";
+              else flash.textContent = "Could not delete pet.";
+              loadWorlds();
+              load();
+            })
+            .catch(function () {
+              flash.textContent = "Could not delete pet.";
+            });
+        });
+      }
+      function wireObstacleButton(selector, endpoint, okMsg, errMsg, needsConfirm) {
+        var btns = box.querySelectorAll(selector);
+        for (var bi = 0; bi < btns.length; bi++) {
+          btns[bi].addEventListener("click", function () {
+            var worldId = Number(this.getAttribute("data-world-id") || 0);
+            if (!worldId) return;
+            if (needsConfirm && !confirm("Are you sure?")) return;
+            fetch("/api/worlds/" + worldId + endpoint, {
+              method: "POST",
+              credentials: "same-origin"
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (d) {
+                flash.textContent = d && d.ok ? okMsg : errMsg;
+                loadWorlds();
+              })
+              .catch(function () {
+                flash.textContent = errMsg;
+              });
+          });
+        }
+      }
+      wireObstacleButton(".world-obstacle-flip", "/obstacles/flip", "Obstacle image flipped.", "Could not flip obstacle image.");
+      wireObstacleButton(".world-obstacle-trim-white", "/obstacles/trim-white", "Obstacle image trimmed (white).", "Could not trim obstacle image.");
+      wireObstacleButton(".world-obstacle-trim-bounds", "/obstacles/trim-bounds", "Obstacle image trimmed (empty bounds).", "Could not trim obstacle image.");
+      wireObstacleButton(".world-obstacle-randomize", "/obstacles/randomize", "Obstacles randomized.", "Could not randomize obstacles.");
+      wireObstacleButton(".world-obstacle-delete-all", "/obstacles/delete-all", "All obstacles removed for world.", "Could not remove obstacles.", true);
+      var obsUploadForms = box.querySelectorAll(".world-obstacle-upload-form");
+      for (var ou = 0; ou < obsUploadForms.length; ou++) {
+        obsUploadForms[ou].addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          var form = ev.target;
+          var worldId = Number(form.getAttribute("data-world-id") || 0);
+          if (!worldId) return false;
+          var fd = new FormData(form);
+          fetch("/api/worlds/" + worldId + "/obstacles/upload", {
+            method: "POST",
+            credentials: "same-origin",
+            body: fd
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              flash.textContent = d && d.ok ? "Obstacle image uploaded." : "Could not upload obstacle image.";
+              loadWorlds();
+            })
+            .catch(function () {
+              flash.textContent = "Could not upload obstacle image.";
+            });
+          return false;
+        });
+      }
+      var obsSettingsForms = box.querySelectorAll(".world-obstacle-settings-form");
+      for (var os = 0; os < obsSettingsForms.length; os++) {
+        obsSettingsForms[os].addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          var form = ev.target;
+          var worldId = Number(form.getAttribute("data-world-id") || 0);
+          if (!worldId) return false;
+          var fd = new FormData(form);
+          fetch("/api/worlds/" + worldId + "/obstacles/settings", {
+            method: "POST",
+            credentials: "same-origin",
+            body: fd
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              flash.textContent = d && d.ok ? "Obstacle settings saved." : "Could not save obstacle settings.";
+              loadWorlds();
+            })
+            .catch(function () {
+              flash.textContent = "Could not save obstacle settings.";
+            });
+          return false;
+        });
+      }
+    }).catch(function () {
+      box.textContent = "Could not load worlds.";
+    });
+  }
+
+  function demoWorldTrack(url, worldVolPct) {
+    if (!url) {
+      flash.textContent = "No music file selected for this world.";
+      return;
+    }
+    var mv = Number(document.getElementById("music-volume-input").value) || 25;
+    var wv = Number(worldVolPct);
+    if (!Number.isFinite(wv)) wv = 100;
+    var a = new Audio(url);
+    a.volume = Math.min(1, (mv / 100) * (wv / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+
+  window.saveWorldMusicVol = function (event, id) {
+    event.preventDefault();
+    var fd = new FormData(event.target);
+    fetch("/api/worlds/" + id + "/music-volume", {
+      method: "POST",
+      credentials: "same-origin",
+      body: fd
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) flash.textContent = "World track volume saved.";
+        else flash.textContent = "Could not save volume.";
+        loadWorlds();
+      });
+    return false;
+  };
+
+  window.saveWorldMusic = function (event, id) {
+    event.preventDefault();
+    var f = event.target;
+    var fd = new FormData(f);
+    fetch("/api/worlds/" + id + "/music", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) flash.textContent = "World music saved.";
+        else flash.textContent = "Could not save world music.";
+        loadWorlds();
+      });
+    return false;
+  };
+
+  window.saveWorldName = function (event, id) {
+    event.preventDefault();
+    var f = event.target;
+    var fd = new FormData(f);
+    fetch("/api/worlds/" + id + "/name", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) flash.textContent = "World name saved.";
+        else flash.textContent = "Could not save world name.";
+        loadWorlds();
+      });
+    return false;
+  };
+
+  window.saveWorldBg = function (event, id) {
+    event.preventDefault();
+    var f = event.target;
+    var fd = new FormData(f);
+    fetch("/api/worlds/" + id + "/background", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) flash.textContent = "World background saved.";
+        else flash.textContent = "Could not save world background.";
+        loadWorlds();
+      });
+    return false;
+  };
+
+  window.deleteWorld = function (id) {
+    if (!confirm("Delete this world? This also deletes all pets in that world.")) return;
+    fetch("/api/worlds/" + id + "/delete", { method: "POST", credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) flash.textContent = "World deleted.";
+        else if (d && d.error === "cannot_delete_last_world") flash.textContent = "Cannot delete the last remaining world.";
+        else flash.textContent = "Could not delete world.";
+        loadWorlds();
+        load();
+      })
+      .catch(function () {
+        flash.textContent = "Could not delete world.";
+      });
+  };
+
   loadSfxList();
+  loadWorlds();
   load();
 })();
 </script>

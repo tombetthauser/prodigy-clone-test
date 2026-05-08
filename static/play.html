@@ -5,15 +5,225 @@
 <title>play</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#111;}
-#gear{position:fixed;top:10px;right:14px;z-index:3;color:#fff;text-decoration:none;font-size:26px;line-height:1;padding:4px;}
-#mute-btn{position:fixed;top:10px;left:14px;z-index:3;background:transparent;border:0;color:#fff;font-size:26px;line-height:1;padding:4px;cursor:pointer;}
+.top-icon{position:fixed;top:10px;z-index:3;color:#fff;text-decoration:none;font-size:36px;line-height:1;padding:8px;background:rgba(15,20,32,0.45);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:transform .08s ease, background .15s ease;}
+.top-icon:hover{background:rgba(15,20,32,0.7);transform:translateY(-1px);}
+.top-icon:active{transform:translateY(1px);}
+#gear{right:18px;}
+#backpack-link{right:80px;}
+#worlds-link{right:142px;}
+#mute-btn{left:18px;border:0;cursor:pointer;}
+#magicoin-bar{position:fixed;top:18px;left:96px;z-index:3;display:flex;align-items:center;gap:8px;color:#fff;background:rgba(15,20,32,0.55);padding:8px 18px 8px 10px;border-radius:999px;font-family:sans-serif;font-weight:800;font-size:20px;backdrop-filter:blur(6px);}
+#magicoin-bar img{width:28px;height:28px;object-fit:contain;}
+#magicoin-bar .count{font-variant-numeric:tabular-nums;letter-spacing:0.02em;}
+.magicoin-float{position:absolute;left:50%;top:0;transform:translateX(-50%);color:#ffd864;font-weight:800;font-size:18px;text-shadow:0 1px 4px rgba(0,0,0,0.55);pointer-events:none;animation:magicoinFloat 1.4s ease-out forwards;font-variant-numeric:tabular-nums;}
+.magicoin-float.negative{color:#ff8b8b;}
+@keyframes magicoinFloat{0%{opacity:0;transform:translate(-50%,4px) scale(0.85);}15%{opacity:1;transform:translate(-50%,-2px) scale(1);}100%{opacity:0;transform:translate(-50%,-32px) scale(1);}}
 #world{position:fixed;left:0;top:0;width:100vw;height:100vh;display:block;}
+#quiz-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.42);z-index:8;}
+#quiz-modal.open{display:flex;}
+#quiz-card{width:min(520px,90vw);background:#fff;border-radius:14px;padding:18px 18px 16px;box-shadow:0 18px 45px rgba(0,0,0,0.35);font-family:sans-serif;}
+#quiz-title{font-size:20px;font-weight:700;margin:0 0 8px;}
+#quiz-reward-hint{display:flex;align-items:center;gap:6px;font-size:14px;color:#444;margin:2px 0 4px;font-weight:600;}
+#quiz-reward-hint .quiz-coin-icon{width:18px;height:18px;object-fit:contain;}
+#quiz-problem{font-size:30px;font-weight:700;letter-spacing:0.02em;margin:10px 0 8px;}
+#quiz-timer-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+#quiz-timer{font-size:15px;color:#333;flex:0 0 auto;font-variant-numeric:tabular-nums;}
+#quiz-timer-bar{flex:1 1 auto;height:8px;background:#e6ecf7;border-radius:5px;overflow:hidden;}
+#quiz-timer-fill{height:100%;width:100%;background:#6495ed;border-radius:5px;transition:width 0.12s linear;}
+#quiz-answer-row{display:flex;align-items:center;gap:10px;}
+#quiz-var-label{font-size:22px;font-weight:700;color:#333;font-family:Georgia,serif;font-style:italic;}
+#quiz-answer{flex:1 1 auto;padding:10px 12px;font-size:20px;box-sizing:border-box;}
+#quiz-submit{margin-top:10px;padding:10px 18px;font-size:16px;font-weight:700;cursor:pointer;color:#fff;background:#6495ed;border:0;border-radius:8px;box-shadow:0 4px 12px rgba(100,149,237,0.35);transition:transform .08s ease, background .15s ease, box-shadow .15s ease;}
+#quiz-submit:hover{background:#5483dc;box-shadow:0 6px 16px rgba(100,149,237,0.45);}
+#quiz-submit:active{transform:translateY(1px);background:#4a78d2;}
+#quiz-feedback{height:28px;margin-top:10px;font-size:22px;font-weight:800;opacity:0;transform:translateY(6px) scale(0.9);}
+#quiz-feedback.show{opacity:1;transform:translateY(0) scale(1);transition:all .22s ease;}
+#quiz-feedback.ok{color:#1f9a43;}
+#quiz-feedback.bad{color:#d13d3d;}
+#quiz-feedback.fail{color:#8c2fd0;}
+#pw-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.42);z-index:9;}
+#pw-modal.open{display:flex;}
+#pw-card{width:min(440px,90vw);background:#fff;border-radius:14px;padding:18px 20px 16px;box-shadow:0 18px 45px rgba(0,0,0,0.35);font-family:sans-serif;}
+#pw-card h2{font-size:20px;font-weight:700;margin:0 0 6px;color:#222;}
+#pw-card p{font-size:14px;color:#555;margin:0 0 12px;}
+#pw-input{width:100%;box-sizing:border-box;padding:10px 12px;font-size:18px;border:1px solid #cbd2e0;border-radius:8px;}
+#pw-input:focus{outline:none;border-color:#6495ed;box-shadow:0 0 0 3px rgba(100,149,237,0.25);}
+#pw-actions{margin-top:12px;display:flex;gap:8px;justify-content:flex-end;}
+#pw-cancel,#pw-submit{padding:9px 16px;font-size:15px;font-weight:700;border-radius:8px;border:0;cursor:pointer;}
+#pw-cancel{background:#e6ecf7;color:#234;}
+#pw-cancel:hover{background:#d4def0;}
+#pw-submit{background:#6495ed;color:#fff;}
+#pw-submit:hover{background:#5483dc;}
+#pw-error{margin-top:8px;height:18px;color:#d13d3d;font-weight:700;font-size:13px;opacity:0;transition:opacity .15s ease;}
+#pw-error.show{opacity:1;}
+#vol-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.42);z-index:9;}
+#vol-modal.open{display:flex;}
+#vol-card{width:min(420px,90vw);background:#fff;border-radius:14px;padding:18px 20px 16px;box-shadow:0 18px 45px rgba(0,0,0,0.35);font-family:sans-serif;}
+#vol-card h2{font-size:20px;font-weight:700;margin:0 0 14px;color:#222;}
+.vol-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.vol-row label{flex:0 0 90px;font-size:14px;font-weight:700;color:#333;}
+.vol-row input[type="range"]{flex:1 1 auto;}
+.vol-row .vol-num{flex:0 0 36px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#234;}
+.vol-mute-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.vol-mute-row input[type="checkbox"]{width:18px;height:18px;}
+.vol-mute-row label{font-size:14px;font-weight:700;color:#333;}
+#vol-actions{margin-top:8px;display:flex;justify-content:flex-end;}
+#vol-close{padding:9px 16px;font-size:15px;font-weight:700;border-radius:8px;border:0;cursor:pointer;background:#6495ed;color:#fff;}
+#vol-close:hover{background:#5483dc;}
+#death-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:10;}
+#death-modal.open{display:flex;}
+#death-card{width:min(440px,90vw);background:#fff;border-radius:14px;padding:22px 22px 18px;box-shadow:0 18px 50px rgba(0,0,0,0.45);font-family:sans-serif;text-align:center;}
+#death-card h2{font-size:26px;font-weight:800;margin:0 0 8px;color:#a31f1f;}
+#death-card p{font-size:15px;color:#444;margin:6px 0;}
+#death-card .death-coin-row{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-weight:700;color:#a3661f;}
+#death-card .death-coin-row img{width:18px;height:18px;}
+.death-actions{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;}
+.death-btn{display:inline-block;padding:11px 18px;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;border:0;font-family:inherit;}
+.death-btn.primary{background:#6495ed;color:#fff;}
+.death-btn.primary:hover{background:#5483dc;}
+.death-btn.secondary{background:#e6ecf7;color:#234;}
+.death-btn.secondary:hover{background:#d4def0;}
+#world-modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(15,20,32,0.55);z-index:8;overflow-y:auto;padding:24px 0;}
+#world-modal.open{display:flex;}
+#world-modal-card{width:min(900px,94vw);background:#fff;border-radius:18px;padding:18px 20px 16px;box-shadow:0 24px 60px rgba(0,0,0,0.35);font-family:sans-serif;}
+#world-modal-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+#world-modal-header h2{margin:0;font-size:22px;color:#234;}
+#world-modal-header .summary{flex:1 1 auto;font-size:14px;color:#555;}
+#world-modal-close{background:#e6ecf7;border:0;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#234;}
+#world-modal-close:hover{background:#d4def0;}
+#world-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+.world-cell{background:#f5f7fc;border:2px solid transparent;border-radius:14px;padding:8px 8px 10px;cursor:pointer;text-align:left;font-family:inherit;color:#234;display:flex;flex-direction:column;gap:6px;}
+.world-cell:hover{border-color:#6495ed;background:#fff;}
+.world-cell.current{border-color:#1f9a43;}
+.world-cell .thumb-wrap{position:relative;width:100%;padding-top:56.25%;background:#dde3ee;border-radius:10px;overflow:hidden;}
+.world-cell .thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.world-cell .thumb-wrap .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:36px;}
+.world-cell .label{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px;}
+.world-cell .pill{font-size:11px;background:#1f9a43;color:#fff;border-radius:999px;padding:2px 8px;}
+.world-cell.add{background:#eef3ff;display:flex;align-items:center;justify-content:center;font-size:18px;color:#234;text-align:center;min-height:140px;}
+.world-cell.add:hover{background:#dde6ff;}
+#fade-overlay{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:30;transition:opacity 0.55s ease;}
+#fade-overlay.on{opacity:1;pointer-events:auto;}
+#backpack-modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(15,20,32,0.55);z-index:9;overflow:hidden;padding:24px 0;}
+#backpack-modal.open{display:flex;}
+#backpack-modal-card{position:relative;width:min(1100px,96vw);height:min(82vh,800px);background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,0.35);font-family:sans-serif;overflow:hidden;display:flex;flex-direction:column;}
+#backpack-modal-close{position:absolute;top:10px;right:12px;background:#e6ecf7;border:0;border-radius:8px;width:32px;height:32px;font-size:18px;cursor:pointer;color:#234;z-index:2;}
+#backpack-modal-close:hover{background:#d4def0;}
+#backpack-iframe{flex:1 1 auto;width:100%;height:100%;border:0;display:block;}
 </style>
 </head>
 <body>
-<a href="/config" id="gear" title="Settings">⚙️</a>
-<button id="mute-btn" type="button" title="Sound muted">🔇</button>
+<a href="#" id="gear" class="top-icon" title="Settings">⚙️</a>
+<a href="#" id="backpack-link" class="top-icon" title="Backpack">🎒</a>
+<a href="#" id="worlds-link" class="top-icon" title="Worlds">🌍</a>
+<div id="backpack-modal" aria-hidden="true">
+  <div id="backpack-modal-card" role="dialog" aria-modal="true" aria-labelledby="backpack-modal-title">
+    <button id="backpack-modal-close" type="button" aria-label="Close">✕</button>
+    <iframe id="backpack-iframe" title="Backpack" src="about:blank"></iframe>
+  </div>
+</div>
+<div id="world-modal" aria-hidden="true">
+  <div id="world-modal-card" role="dialog" aria-modal="true" aria-labelledby="world-modal-title">
+    <div id="world-modal-header">
+      <h2 id="world-modal-title">🌍 Choose a world</h2>
+      <span class="summary" id="world-modal-summary"></span>
+      <button id="world-modal-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <div id="world-grid">Loading…</div>
+  </div>
+</div>
+<div id="fade-overlay"></div>
+<button id="mute-btn" type="button" class="top-icon" title="Sound">🔊</button>
+<div id="magicoin-bar" title="Magicoin">
+  <img id="magicoin-icon" src="/static-sprites/magicoin/coin.png" alt="">
+  <span class="count" id="magicoin-count">—</span>
+</div>
 <canvas id="world"></canvas>
+<div id="death-modal" aria-hidden="true">
+  <div id="death-card" role="dialog" aria-modal="true" aria-labelledby="death-title">
+    <h2 id="death-title">You have died</h2>
+    <p>Your adventure here has ended.</p>
+    <div class="death-coin-row">
+      <img src="/static-sprites/magicoin/coin.png" alt=""> Lost half your magicoin.
+    </div>
+    <p style="margin-top:12px;">Start over in a world, or log out.</p>
+    <div class="death-actions">
+      <a href="/worlds" class="death-btn primary">Go to Worlds</a>
+      <form id="death-logout-form" action="/logout" method="post" style="display:inline;">
+        <button type="submit" class="death-btn secondary">Log out</button>
+      </form>
+    </div>
+  </div>
+</div>
+<div id="vol-modal" aria-hidden="true">
+  <div id="vol-card" role="dialog" aria-modal="true" aria-labelledby="vol-title">
+    <h2 id="vol-title">Sound</h2>
+    <div class="vol-mute-row">
+      <input id="vol-mute" type="checkbox">
+      <label for="vol-mute">Mute all sound</label>
+    </div>
+    <div class="vol-row">
+      <label for="vol-sfx">SFX</label>
+      <input id="vol-sfx" type="range" min="0" max="100" step="1">
+      <span class="vol-num" id="vol-sfx-num">0</span>
+    </div>
+    <div class="vol-row">
+      <label for="vol-music">Music</label>
+      <input id="vol-music" type="range" min="0" max="100" step="1">
+      <span class="vol-num" id="vol-music-num">0</span>
+    </div>
+    <div id="vol-actions">
+      <button id="vol-close" type="button">Done</button>
+    </div>
+  </div>
+</div>
+<div id="pw-modal" aria-hidden="true">
+  <div id="pw-card" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+    <h2 id="pw-title">Admin access required</h2>
+    <p>Configuration changes require admin privileges. Please enter the admin password.</p>
+    <input type="text" name="fakeusernameremembered" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <input type="password" name="fakepasswordremembered" tabindex="-1" aria-hidden="true" autocomplete="new-password" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <input
+      id="pw-input"
+      type="password"
+      name="config_admin_passcode"
+      autocomplete="new-password"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+      data-1p-ignore="true"
+      data-lpignore="true"
+      data-form-type="other"
+      placeholder="Password">
+    <div id="pw-error">Incorrect password.</div>
+    <div id="pw-actions">
+      <button id="pw-cancel" type="button">Cancel</button>
+      <button id="pw-submit" type="button">Unlock</button>
+    </div>
+  </div>
+</div>
+<div id="quiz-modal" aria-hidden="true">
+  <div id="quiz-card" role="dialog" aria-modal="true" aria-labelledby="quiz-title">
+    <h2 id="quiz-title">Solve to attack</h2>
+    <div id="quiz-reward-hint">
+      Answer correctly for
+      <img src="/static-sprites/magicoin/coin.png" alt="" class="quiz-coin-icon">
+      <strong id="quiz-reward-amount">5-25</strong>
+      Magicoin!
+    </div>
+    <div id="quiz-problem">0 + 0 = 0</div>
+    <div id="quiz-timer-row">
+      <div id="quiz-timer">15.0s</div>
+      <div id="quiz-timer-bar"><div id="quiz-timer-fill"></div></div>
+    </div>
+    <div id="quiz-answer-row">
+      <span id="quiz-var-label">x =</span>
+      <input id="quiz-answer" type="text" inputmode="numeric" autocomplete="off" placeholder="">
+    </div>
+    <button id="quiz-submit" type="button">Submit</button>
+    <div id="quiz-feedback"></div>
+  </div>
+</div>
 <script>
 (function () {
   var canvas = document.getElementById("world");
@@ -25,7 +235,47 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   var peers = {};
   var npcs = [];
   var pets = [];
+  var obstacles = [];
   var petRender = {};
+  var coinPiles = [];
+  var coinPileRender = {};
+  var coinPileRemoving = {};
+  var petRenderWarmupUntil = 0;
+  var PET_WARMUP_MS = 600;
+  var coinPileImg = new Image();
+  coinPileImg.src = "/static-sprites/magicoin/coin-pile.png";
+  var COIN_PILE_DESPAWN_MS = 1200;
+  function syncCoinPilesFromServer(list) {
+    var seen = {};
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      seen[c.id] = true;
+      var r = coinPileRender[c.id];
+      if (!r) {
+        r = { spawnT0: performance.now(), x: c.x, y: c.y, size_px: Number(c.size_px) || 130 };
+        coinPileRender[c.id] = r;
+      }
+      r.x = Number(c.x) || r.x;
+      r.y = Number(c.y) || r.y;
+      r.size_px = Number(c.size_px) || r.size_px || 130;
+    }
+    for (var k in coinPileRender) {
+      if (!Object.prototype.hasOwnProperty.call(coinPileRender, k)) continue;
+      if (!seen[k]) {
+        var gone = coinPileRender[k];
+        delete coinPileRender[k];
+        if (!coinPileRemoving[k]) {
+          coinPileRemoving[k] = {
+            x: gone.x,
+            y: gone.y,
+            size: gone.size_px || 130,
+            removeT0: performance.now(),
+            spawnT0: gone.spawnT0 || performance.now()
+          };
+        }
+      }
+    }
+  }
   var me = {
     x: 400,
     y: 300,
@@ -33,9 +283,23 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     sprite: "",
     attackSprite: "",
     shoutGreeting: "Hello!",
-    spriteWidthPx: 48
+    spriteWidthPx: 48,
+    defeatCount: 0,
+    captureCount: 0,
+    health: 100,
+    maxHealth: 100,
+    dead: false,
+    spawnSeq: 0,
+    deathT0: 0,
+    spawnT0: 0,
+    hurtT0: 0,
+    transformedShiny: false,
+    worldId: 1,
+    worldScreen: 1
   };
+  var worldMirrored = false;
   var myAccountId = null;
+  var meCenterOnLoad = false;
   var imgCache = {};
   var bg = new Image();
   var bgOk = false;
@@ -58,36 +322,397 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   var shadowBlurPx = 0;
   var EDGE_OUTSET = 150;
   var ATTACK_MS = 420;
+  var PET_DEATH_MS = 1900;
+  var PET_BALL_COLLECT_MS = 560;
+  var PET_SPAWN_MS = 900;
+  var HURT_MS = 520;
+  var defeatBallSprite = "";
+  var defeatBallSizePx = 28;
   var meAttack = { active: false, t0: 0 };
-  var muted = true;
+  var meDespawnT0 = 0;
+  var ME_DESPAWN_MS = 700;
+  var MUTE_LS_KEY = "mmo_muted_v1";
+  var AUDIO_SESSION_KEY = "mmo_audio_session_v1";
+  function readPersistedMute() {
+    try {
+      var v = localStorage.getItem(MUTE_LS_KEY);
+      if (v === "0") return false;
+      if (v === "1") return true;
+    } catch (e) {}
+    // Default to unmuted when no persisted choice exists.
+    return false;
+  }
+  function writePersistedMute(m) {
+    try { localStorage.setItem(MUTE_LS_KEY, m ? "1" : "0"); } catch (e) {}
+  }
+  function markAudioSessionActive() {
+    try { sessionStorage.setItem(AUDIO_SESSION_KEY, "1"); } catch (e) {}
+  }
+  var muted = readPersistedMute();
   var muteBtn = document.getElementById("mute-btn");
   var walkSfx = new Audio("/sfx/walk_subtle.wav");
-  var attackSfx = new Audio("/sfx/attack_subtle.wav");
   var bgMusic = new Audio();
   bgMusic.loop = true;
+  var worldMusicVolPct = 100;
+  var eventSfxConfig = {};
+  var eventSfxAudioCache = {};
+  var userAttackSfxUrl = "";
+  var userAttackSfxVolPct = 100;
   walkSfx.preload = "auto";
-  attackSfx.preload = "auto";
   var sfxVolume = 35;
   var musicVolume = 25;
   walkSfx.volume = 0.12;
-  attackSfx.volume = 0.16;
   walkSfx.playbackRate = 0.58;
-  attackSfx.playbackRate = 0.78;
   var nextFootstepAt = 0;
+  var quizModal = document.getElementById("quiz-modal");
+  var quizProblemEl = document.getElementById("quiz-problem");
+  var quizVarLabelEl = document.getElementById("quiz-var-label");
+  var quizTimerEl = document.getElementById("quiz-timer");
+  var quizTimerFillEl = document.getElementById("quiz-timer-fill");
+  var quizAnswerEl = document.getElementById("quiz-answer");
+  var quizSubmitBtn = document.getElementById("quiz-submit");
+  var quizFeedbackEl = document.getElementById("quiz-feedback");
+  var quizRewardAmountEl = document.getElementById("quiz-reward-amount");
+  var pendingQuiz = null;
+  var QUIZ_DURATION_MS = 15000;
+  var quizMaxNumber = 30;
+  var quizMode = "algebra_add_sub";
+  var quizAttackCount = 0;
+  var QUIZ_ATTACK_INTERVAL = 3;
+  var QUIZ_LETTERS = ["x", "y", "z", "a", "b", "n", "m"];
+  function setQuizRewardAmount(v) {
+    if (!quizRewardAmountEl) return;
+    var n = Number(v);
+    quizRewardAmountEl.textContent = Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : "…";
+  }
+
+  function updateQuizTimerBar(remainMs, durationMs) {
+    if (!quizTimerFillEl) return;
+    var d = Math.max(1, Number(durationMs) || QUIZ_DURATION_MS);
+    var pct = Math.max(0, Math.min(1, Number(remainMs) / d));
+    quizTimerFillEl.style.width = (pct * 100).toFixed(2) + "%";
+  }
 
   function updateMuteUi() {
     muteBtn.textContent = muted ? "🔇" : "🔊";
     muteBtn.title = muted ? "Sound muted" : "Sound on";
   }
   updateMuteUi();
+  var volModal = document.getElementById("vol-modal");
+  var volMute = document.getElementById("vol-mute");
+  var volSfx = document.getElementById("vol-sfx");
+  var volSfxNum = document.getElementById("vol-sfx-num");
+  var volMusic = document.getElementById("vol-music");
+  var volMusicNum = document.getElementById("vol-music-num");
+  var volClose = document.getElementById("vol-close");
+  function refreshVolModal() {
+    if (!volModal) return;
+    volMute.checked = muted;
+    volSfx.value = String(sfxVolume);
+    volSfxNum.textContent = String(sfxVolume);
+    volMusic.value = String(musicVolume);
+    volMusicNum.textContent = String(musicVolume);
+  }
+  function openVolModal() {
+    if (!volModal) return;
+    refreshVolModal();
+    volModal.classList.add("open");
+  }
+  function closeVolModal() {
+    if (volModal) volModal.classList.remove("open");
+  }
   muteBtn.addEventListener("click", function () {
     muted = !muted;
+    markAudioSessionActive();
+    writePersistedMute(muted);
     updateMuteUi();
-    if (muted) {
-      bgMusic.pause();
-    } else if (bgMusic.src) {
-      var pm = bgMusic.play();
-      if (pm && typeof pm.catch === "function") pm.catch(function () {});
+    applyAudioSettings();
+  });
+  if (volMute) volMute.addEventListener("change", function () {
+    muted = !!volMute.checked;
+    markAudioSessionActive();
+    writePersistedMute(muted);
+    updateMuteUi();
+    applyAudioSettings();
+  });
+  if (volSfx) volSfx.addEventListener("input", function () {
+    markAudioSessionActive();
+    sfxVolume = Math.max(0, Math.min(100, Number(volSfx.value) || 0));
+    volSfxNum.textContent = String(sfxVolume);
+  });
+  if (volMusic) volMusic.addEventListener("input", function () {
+    markAudioSessionActive();
+    musicVolume = Math.max(0, Math.min(100, Number(volMusic.value) || 0));
+    volMusicNum.textContent = String(musicVolume);
+    applyAudioSettings();
+  });
+  if (volClose) volClose.addEventListener("click", function () {
+    markAudioSessionActive();
+    closeVolModal();
+  });
+  if (volModal) volModal.addEventListener("click", function (e) {
+    if (e.target === volModal) closeVolModal();
+  });
+
+  var deathModal = document.getElementById("death-modal");
+  var deathTimer = null;
+  function scheduleDeathModal() {
+    if (deathTimer) clearTimeout(deathTimer);
+    deathTimer = setTimeout(function () {
+      if (deathModal) deathModal.classList.add("open");
+    }, 2200);
+  }
+
+  var pwModal = document.getElementById("pw-modal");
+  var pwInput = document.getElementById("pw-input");
+  var pwSubmit = document.getElementById("pw-submit");
+  var pwCancel = document.getElementById("pw-cancel");
+  var pwError = document.getElementById("pw-error");
+  var gearBtn = document.getElementById("gear");
+  function openPwModal() {
+    if (!pwModal) return;
+    pwError.classList.remove("show");
+    pwInput.value = "";
+    pwInput.setAttribute("readonly", "readonly");
+    pwModal.classList.add("open");
+    setTimeout(function () {
+      try {
+        pwInput.value = "";
+        pwInput.removeAttribute("readonly");
+        pwInput.focus();
+      } catch (e) {}
+    }, 120);
+  }
+  function closePwModal() {
+    if (pwModal) pwModal.classList.remove("open");
+  }
+  function attemptPw() {
+    var v = String(pwInput.value || "").trim().toLowerCase();
+    if (v === "futureboy") {
+      closePwModal();
+      window.location.href = "/config";
+    } else {
+      pwError.classList.add("show");
+      pwInput.focus();
+      pwInput.select();
+    }
+  }
+  if (gearBtn) {
+    gearBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      openPwModal();
+    });
+  }
+  if (pwSubmit) pwSubmit.addEventListener("click", attemptPw);
+  if (pwCancel) pwCancel.addEventListener("click", closePwModal);
+  if (pwInput) pwInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      attemptPw();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closePwModal();
+    }
+  });
+  if (pwModal) pwModal.addEventListener("click", function (e) {
+    if (e.target === pwModal) closePwModal();
+  });
+
+  var worldsLink = document.getElementById("worlds-link");
+  var worldModal = document.getElementById("world-modal");
+  var worldGrid = document.getElementById("world-grid");
+  var worldSummaryEl = document.getElementById("world-modal-summary");
+  var worldModalClose = document.getElementById("world-modal-close");
+  var fadeOverlay = document.getElementById("fade-overlay");
+  var worldTransitionInProgress = false;
+  var worldScreenTransitionPending = false;
+  var pendingWorldTransition = false;
+  var pendingWorldTransitionWorldId = null;
+
+  function openWorldModal() {
+    if (!worldModal) return;
+    worldModal.classList.add("open");
+    worldGrid.textContent = "Loading…";
+    fetch("/api/worlds", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) { worldGrid.textContent = "Could not load worlds."; return; }
+        renderWorldGrid(d);
+      })
+      .catch(function () { worldGrid.textContent = "Could not load worlds."; });
+  }
+
+  function closeWorldModal() {
+    if (worldModal) worldModal.classList.remove("open");
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderWorldGrid(d) {
+    var current = Number(d.current_world_id || 1);
+    var costEnter = Number(d.cost_enter || 10);
+    var costCreate = Number(d.cost_create || 50);
+    var bal = Number(d.magicoin || 0);
+    if (worldSummaryEl) {
+      worldSummaryEl.innerHTML =
+        "Balance: <strong>" + bal + "</strong> · Enter: " + costEnter +
+        " · Create: " + costCreate + " magicoin";
+    }
+    var cells = (d.worlds || []).map(function (w) {
+      var thumb = w.background_url
+        ? '<img src="' + escapeHtml(w.background_url) + '" alt="">'
+        : '<span class="placeholder">🖼️</span>';
+      var pill = Number(w.id) === current ? '<span class="pill">Current</span>' : "";
+      return (
+        '<button type="button" class="world-cell' + (Number(w.id) === current ? " current" : "") +
+        '" data-world-id="' + Number(w.id) + '">' +
+        '<span class="thumb-wrap">' + thumb + '</span>' +
+        '<span class="label">' + escapeHtml(w.name || "World") + " " + pill + "</span>" +
+        "</button>"
+      );
+    });
+    cells.push('<a class="world-cell add" href="/worlds/new">+ Add world<br><small>(' + costCreate + ' magicoin)</small></a>');
+    worldGrid.innerHTML = cells.join("");
+    var btns = worldGrid.querySelectorAll(".world-cell[data-world-id]");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function () {
+        var wid = Number(this.getAttribute("data-world-id"));
+        if (!wid || worldTransitionInProgress) return;
+        if (wid === current) {
+          closeWorldModal();
+          return;
+        }
+        beginWorldTransition(wid);
+      });
+    }
+  }
+
+  function beginWorldTransition(worldId) {
+    worldTransitionInProgress = true;
+    pendingWorldTransition = true;
+    pendingWorldTransitionWorldId = worldId;
+    closeWorldModal();
+    playEventSfx("world_change");
+    if (!muted && bgMusic.src) fadeBgMusicTo(0, 320);
+    meDespawnT0 = performance.now();
+    setTimeout(function () {
+      if (fadeOverlay) fadeOverlay.classList.add("on");
+    }, ME_DESPAWN_MS - 200);
+    setTimeout(function () {
+      var fd = new FormData();
+      fetch("/api/worlds/" + worldId + "/enter", {
+        method: "POST",
+        credentials: "same-origin",
+        body: fd
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.ok) {
+            // In-place world switch: ask the websocket to re-sync this client.
+            try {
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "switch_world", world_id: worldId }));
+              } else {
+                location.reload();
+              }
+            } catch (e) {
+              location.reload();
+            }
+          } else {
+            worldTransitionInProgress = false;
+            pendingWorldTransition = false;
+            pendingWorldTransitionWorldId = null;
+            meDespawnT0 = 0;
+            if (fadeOverlay) fadeOverlay.classList.remove("on");
+            alert(
+              d && d.error === "insufficient_magicoin"
+                ? "Not enough magicoin to enter that world."
+                : "Could not enter world."
+            );
+          }
+        })
+        .catch(function () {
+          worldTransitionInProgress = false;
+          pendingWorldTransition = false;
+          pendingWorldTransitionWorldId = null;
+          meDespawnT0 = 0;
+          if (fadeOverlay) fadeOverlay.classList.remove("on");
+        });
+    }, ME_DESPAWN_MS + 100);
+  }
+
+  function beginWorldScreenTransition(delta) {
+    if (worldScreenTransitionPending || worldTransitionInProgress) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if ((delta < 0 && me.worldScreen <= 0) || (delta > 0 && me.worldScreen >= 2)) return;
+    worldScreenTransitionPending = true;
+    try {
+      ws.send(JSON.stringify({ type: "switch_world_screen", delta: delta }));
+    } catch (e) {
+      worldScreenTransitionPending = false;
+    }
+  }
+
+  if (worldsLink) {
+    worldsLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      openWorldModal();
+    });
+  }
+  if (worldModalClose) worldModalClose.addEventListener("click", closeWorldModal);
+  if (worldModal) worldModal.addEventListener("click", function (e) {
+    if (e.target === worldModal) closeWorldModal();
+  });
+
+  var backpackLink = document.getElementById("backpack-link");
+  var backpackModal = document.getElementById("backpack-modal");
+  var backpackIframe = document.getElementById("backpack-iframe");
+  var backpackModalClose = document.getElementById("backpack-modal-close");
+  var backpackOpen = false;
+
+  function openBackpackModal() {
+    if (!backpackModal || backpackOpen) return;
+    backpackOpen = true;
+    backpackModal.classList.add("open");
+    backpackModal.setAttribute("aria-hidden", "false");
+    if (backpackIframe) {
+      backpackIframe.src = "/backpack?embedded=1";
+    }
+  }
+  function closeBackpackModal() {
+    if (!backpackModal || !backpackOpen) return;
+    backpackOpen = false;
+    backpackModal.classList.remove("open");
+    backpackModal.setAttribute("aria-hidden", "true");
+    if (backpackIframe) {
+      try { backpackIframe.src = "about:blank"; } catch (e) {}
+    }
+  }
+  if (backpackLink) {
+    backpackLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      openBackpackModal();
+    });
+  }
+  if (backpackModalClose) backpackModalClose.addEventListener("click", closeBackpackModal);
+  if (backpackModal) backpackModal.addEventListener("click", function (e) {
+    if (e.target === backpackModal) closeBackpackModal();
+  });
+  window.addEventListener("message", function (e) {
+    var data = e && e.data;
+    if (!data || typeof data !== "object") return;
+    if (data.type === "backpack:close") closeBackpackModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (backpackOpen && e.key === "Escape") {
+      e.preventDefault();
+      closeBackpackModal();
     }
   });
 
@@ -121,6 +746,69 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     return { hw: hw, hh: hh };
   }
 
+  function obstacleHitboxRect(o) {
+    var w = Math.max(1, Number(o.width_px) || 1);
+    var h = Math.max(1, Number(o.height_px) || 1);
+    var cx = Number(o.x) || 0;
+    var cy = Number(o.y) || 0;
+    return {
+      left: cx - w / 2,
+      right: cx + w / 2,
+      top: cy + h / 6,
+      bottom: cy + h / 2
+    };
+  }
+
+  function circleRectOverlap(x, y, r, rect) {
+    var nx = Math.min(Math.max(x, rect.left), rect.right);
+    var ny = Math.min(Math.max(y, rect.top), rect.bottom);
+    var dx = x - nx;
+    var dy = y - ny;
+    return dx * dx + dy * dy <= r * r;
+  }
+
+  function rectsOverlap(a, b) {
+    return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+  }
+
+  function actorBottomHitboxRect(x, y, halfW, halfH) {
+    var left = x - halfW;
+    var right = x + halfW;
+    var top = y + halfH / 3;
+    var bottom = y + halfH;
+    return { left: left, right: right, top: top, bottom: bottom };
+  }
+
+  function blockedByObstacles(x, y, radius, halfW, halfH) {
+    if (halfW != null && halfH != null) {
+      var actorRect = actorBottomHitboxRect(x, y, Math.max(4, Number(halfW) || 4), Math.max(4, Number(halfH) || 4));
+      for (var j = 0; j < obstacles.length; j++) {
+        if (rectsOverlap(actorRect, obstacleHitboxRect(obstacles[j]))) return true;
+      }
+      return false;
+    }
+    for (var i = 0; i < obstacles.length; i++) {
+      if (circleRectOverlap(x, y, radius, obstacleHitboxRect(obstacles[i]))) return true;
+    }
+    return false;
+  }
+
+  function resolveObstacleOverlapRight(x, y, radius, maxShiftPx, halfW, halfH) {
+    var nx = Number(x) || 0;
+    var yy = Number(y) || 0;
+    var r = Math.max(4, Number(radius) || 4);
+    var cap = Math.max(24, Number(maxShiftPx) || 180);
+    if (!blockedByObstacles(nx, yy, r, halfW, halfH)) return { x: nx, moved: false };
+    var shifted = 0;
+    var step = Math.max(2, Math.min(14, r * 0.22));
+    while (shifted < cap) {
+      nx += step;
+      shifted += step;
+      if (!blockedByObstacles(nx, yy, r, halfW, halfH)) return { x: nx, moved: true };
+    }
+    return { x: nx, moved: true };
+  }
+
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -131,13 +819,25 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     me.y = Math.min(Math.max(me.y, my - EDGE_OUTSET), canvas.height - my + EDGE_OUTSET);
   }
 
-  function drawMobSprite(url, cx, cy, targetW, wobbleAmp, faceDir, extraScaleX) {
+  function getHurtScale(hurtT0) {
+    if (!hurtT0) return null;
+    var elapsed = performance.now() - hurtT0;
+    if (elapsed >= HURT_MS) return null;
+    var t = elapsed / HURT_MS;
+    var amp = 0.42 * Math.exp(-4.0 * t) * Math.sin(2 * Math.PI * 2.4 * t - Math.PI / 2);
+    return { sy: 1 + amp, sx: 1 - amp * 0.55 };
+  }
+
+  function drawMobSprite(url, cx, cy, targetW, wobbleAmp, faceDir, extraScaleX, hurtT0) {
     wobbleAmp = wobbleAmp == null ? 0 : wobbleAmp;
     faceDir = faceDir === -1 ? -1 : 1;
     var squashY = 1 - 0.11 * wobbleAmp;
     var squashX = 1 + 0.07 * wobbleAmp;
     var atkScaleX = extraScaleX == null ? 1 : extraScaleX;
     var mirror = faceDir;
+    var hurt = getHurtScale(hurtT0);
+    var hurtSx = hurt ? hurt.sx : 1;
+    var hurtSy = hurt ? hurt.sy : 1;
 
     var dw = targetW;
     var dh = targetW;
@@ -147,11 +847,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     }
     var hw = dw / 2;
     var hh = dh / 2;
+    var groundOffset = hh * (1 - hurtSy);
 
     if (!url) {
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(squashX * mirror * atkScaleX, squashY);
+      ctx.translate(cx, cy + groundOffset);
+      ctx.scale(squashX * mirror * atkScaleX * hurtSx, squashY * hurtSy);
       ctx.fillStyle = "#888";
       ctx.fillRect(-hw, -hh, dw, dh);
       ctx.restore();
@@ -159,8 +860,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     }
 
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(squashX * mirror * atkScaleX, squashY);
+    ctx.translate(cx, cy + groundOffset);
+    ctx.scale(squashX * mirror * atkScaleX * hurtSx, squashY * hurtSy);
     if (im.complete && im.naturalWidth > 0) {
       ctx.drawImage(im, -hw, -hh, dw, dh);
     } else {
@@ -269,6 +970,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     state.facingH = facingH || 1;
   }
 
+  function playUserAttackSfx() {
+    var url = userAttackSfxUrl || "/sfx/attack_subtle.wav";
+    playPetAttackSfx(url, userAttackSfxVolPct);
+  }
+
   function playSfx(baseAudio) {
     if (muted) return;
     try {
@@ -280,26 +986,627 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     } catch (e) {}
   }
 
-  function applyAudioSettings() {
-    bgMusic.volume = (musicVolume / 100);
+  var bgMusicFadeTimer = null;
+  function stopBgMusicFade() {
+    if (!bgMusicFadeTimer) return;
+    clearInterval(bgMusicFadeTimer);
+    bgMusicFadeTimer = null;
+  }
+  function targetBgMusicVolume() {
+    var wm = Math.max(0, Math.min(100, Number(worldMusicVolPct) || 100)) / 100;
+    return (musicVolume / 100) * wm;
+  }
+  function fadeBgMusicTo(targetVol, durationMs) {
+    stopBgMusicFade();
+    var target = Math.max(0, Math.min(1, Number(targetVol) || 0));
+    var duration = Math.max(1, Number(durationMs) || 1);
+    var start = Math.max(0, Math.min(1, Number(bgMusic.volume) || 0));
+    if (Math.abs(target - start) < 0.001) {
+      bgMusic.volume = target;
+      return;
+    }
+    var t0 = performance.now();
+    bgMusicFadeTimer = setInterval(function () {
+      var p = Math.max(0, Math.min(1, (performance.now() - t0) / duration));
+      // Smoothstep easing for less abrupt ramps.
+      var e = p * p * (3 - 2 * p);
+      bgMusic.volume = start + (target - start) * e;
+      if (p >= 1) {
+        bgMusic.volume = target;
+        stopBgMusicFade();
+      }
+    }, 20);
+  }
+
+  function applyAudioSettings(opts) {
+    var fadeMs = opts && Number(opts.fadeMs) > 0 ? Number(opts.fadeMs) : 0;
+    var targetVol = targetBgMusicVolume();
     if (muted) {
+      stopBgMusicFade();
       bgMusic.pause();
     } else if (bgMusic.src) {
       var pm = bgMusic.play();
       if (pm && typeof pm.catch === "function") pm.catch(function () {});
+      if (fadeMs > 0) {
+        if (bgMusic.volume > targetVol) {
+          // If current volume is higher (e.g. world switch), fade down then up via caller.
+          bgMusic.volume = targetVol;
+        }
+        fadeBgMusicTo(targetVol, fadeMs);
+      } else {
+        stopBgMusicFade();
+        bgMusic.volume = targetVol;
+      }
+    } else {
+      stopBgMusicFade();
+      bgMusic.volume = targetVol;
     }
   }
 
-  function drawName(cx, cy, hw, hh, text, fs) {
+  function setBgMusicUrl(url, opts) {
+    var next = String(url || "");
+    var key = next || "";
+    var prevKey = String(bgMusic.getAttribute("data-src-key") || "");
+    var force = !!(opts && opts.force);
+    if (!force && key === prevKey) return false;
+    bgMusic.src = next;
+    bgMusic.preload = "auto";
+    bgMusic.setAttribute("data-src-key", key);
+    return true;
+  }
+
+  // Browsers may block autoplay until a user gesture; retry until music starts.
+  var bgMusicAutoplayFallbackAttached = false;
+  function attachBgMusicAutoplayFallback() {
+    if (bgMusicAutoplayFallbackAttached) return;
+    bgMusicAutoplayFallbackAttached = true;
+    function onUserGesture() {
+      if (muted) return;
+      if (!bgMusic.src) return;
+      applyAudioSettings();
+      // If the browser accepted the play(), the element should no longer be paused.
+      if (!bgMusic.paused) {
+        document.removeEventListener("pointerdown", onUserGesture);
+        document.removeEventListener("touchstart", onUserGesture);
+        document.removeEventListener("click", onUserGesture);
+        document.removeEventListener("keydown", onUserGesture);
+      }
+    }
+    document.addEventListener("pointerdown", onUserGesture, { passive: true });
+    document.addEventListener("touchstart", onUserGesture, { passive: true });
+    document.addEventListener("click", onUserGesture);
+    document.addEventListener("keydown", onUserGesture);
+  }
+  attachBgMusicAutoplayFallback();
+
+  function playPetAttackSfx(url, volPct) {
+    if (!url || muted) return;
+    var rel = Math.max(0, Math.min(100, Number(volPct)));
+    if (!isFinite(rel)) rel = 100;
+    try {
+      var base = eventSfxAudioCache[url];
+      if (!base) {
+        base = new Audio(url);
+        base.preload = "auto";
+        eventSfxAudioCache[url] = base;
+      }
+      var a = base.cloneNode(true);
+      a.volume = Math.min(1, (sfxVolume / 100) * (rel / 100));
+      var p = a.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    } catch (e) {}
+  }
+
+  function playEventSfx(key) {
+    var cfg = eventSfxConfig[key];
+    if (!cfg || muted) return;
+    var fname = cfg.file;
+    if (!fname) return;
+    var rel = Math.max(0, Math.min(100, Number(cfg.vol))) || 100;
+    try {
+      var url = "/sfx/" + encodeURIComponent(String(fname));
+      var base = eventSfxAudioCache[url];
+      if (!base) {
+        base = new Audio(url);
+        base.preload = "auto";
+        eventSfxAudioCache[url] = base;
+      }
+      var a = base.cloneNode(true);
+      a.volume = Math.min(1, (sfxVolume / 100) * (rel / 100));
+      var p = a.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    } catch (e) {}
+  }
+
+  var magicoinCountEl = document.getElementById("magicoin-count");
+  var magicoinBarEl = document.getElementById("magicoin-bar");
+  var magicoinDisplayed = 0;
+  var magicoinTarget = 0;
+  var magicoinTweenTimer = null;
+  function updateMagicoinDisplay(value, opts) {
+    if (!magicoinCountEl) return;
+    var target = Math.round(Number(value));
+    if (!Number.isFinite(target)) target = 0;
+    magicoinTarget = target;
+    if (opts && opts.immediate) {
+      magicoinDisplayed = target;
+      magicoinCountEl.textContent = String(target);
+      if (magicoinTweenTimer) { clearInterval(magicoinTweenTimer); magicoinTweenTimer = null; }
+      return;
+    }
+    if (magicoinTweenTimer) return;
+    magicoinTweenTimer = setInterval(function () {
+      if (magicoinDisplayed === magicoinTarget) {
+        clearInterval(magicoinTweenTimer);
+        magicoinTweenTimer = null;
+        return;
+      }
+      magicoinDisplayed += magicoinTarget > magicoinDisplayed ? 1 : -1;
+      magicoinCountEl.textContent = String(magicoinDisplayed);
+    }, 28);
+  }
+  function showMagicoinDelta(amount) {
+    if (!magicoinBarEl) return;
+    var float = document.createElement("div");
+    float.className = "magicoin-float" + (Number(amount) < 0 ? " negative" : "");
+    var n = Number(amount) || 0;
+    float.textContent = (n > 0 ? "+" : "") + n;
+    magicoinBarEl.appendChild(float);
+    setTimeout(function () { float.remove(); }, 1400);
+  }
+
+  function drawName(cx, cy, hw, hh, name, score, fs) {
     fs = fs || 12;
-    ctx.fillStyle = "#fff";
     ctx.font = fs + "px sans-serif";
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 3;
     var nx = cx - hw;
     var ny = cy - hh - 4;
-    ctx.strokeText(text, nx, ny);
-    ctx.fillText(text, nx, ny);
+    var nameText = String(name == null ? "" : name);
+    ctx.strokeText(nameText, nx, ny);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(nameText, nx, ny);
+    if (score === undefined || score === null) return;
+    var n = Number(score);
+    if (!isFinite(n)) return;
+    var scoreText = " " + n;
+    var nameWidth = ctx.measureText(nameText).width;
+    ctx.strokeText(scoreText, nx + nameWidth, ny);
+    ctx.fillStyle = "#6495ed";
+    ctx.fillText(scoreText, nx + nameWidth, ny);
+  }
+
+  function drawHealthBar(cx, spriteTopY, health, maxHealth) {
+    var maxHp = Math.max(1, Number(maxHealth) || 100);
+    var hp = Math.max(0, Math.min(maxHp, Number(health)));
+    var pct = hp / maxHp;
+    var bw = 46;
+    var bh = 6;
+    var bx = cx - bw / 2;
+    var by = spriteTopY - 22;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = "#8b1e1e";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = pct > 0.5 ? "#36c15f" : (pct > 0.25 ? "#f0c24b" : "#e54848");
+    ctx.fillRect(bx, by, bw * pct, bh);
+    ctx.restore();
+  }
+
+  function drawWhiteGlow(cx, cy, radius, alpha) {
+    alpha = Math.max(0, Math.min(1, alpha));
+    var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    g.addColorStop(0, "rgba(255,255,255," + alpha.toFixed(3) + ")");
+    g.addColorStop(0.45, "rgba(255,255,255," + (alpha * 0.82).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.save();
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDeathBall(cx, cy, size, alpha, imageUrl, squash) {
+    alpha = Math.max(0, Math.min(1, alpha));
+    squash = squash == null ? 0 : squash;
+    var w = Math.max(8, Number(size) || 28);
+    var h = w;
+    var im = imageUrl ? cacheImg(imageUrl) : null;
+    if (im && im.complete && im.naturalWidth > 0) {
+      h = w * (im.naturalHeight / im.naturalWidth);
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(cx, cy);
+    ctx.scale(1 + squash * 0.16, 1 - squash * 0.18);
+    if (im && im.complete && im.naturalWidth > 0) {
+      ctx.drawImage(im, -w / 2, -h / 2, w, h);
+    } else {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(0, 0, w / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawDeathBallShadow(cx, groundY, size, heightAboveGround, alpha) {
+    var proximity = 1 - Math.min(1, Math.max(0, heightAboveGround) / 70) * 0.55;
+    var a = Math.max(0, Math.min(1, shadowDarknessPct / 100)) * proximity * (alpha == null ? 1 : alpha);
+    var blur = Math.max(0, shadowBlurPx | 0);
+    var passes = blur ? Math.min(10, Math.max(2, Math.floor(blur / 3))) : 1;
+    var rx = Math.max(8, size * 0.42 * proximity);
+    var ry = Math.max(3, size * 0.12 * (shadowHeightPct / 100) * proximity);
+    var y = groundY + size * 0.48;
+    ctx.save();
+    for (var i = 0; i < passes; i++) {
+      var t = passes === 1 ? 0 : i / (passes - 1);
+      var grow = blur ? (t * blur * 0.18) : 0;
+      var passAlpha = passes === 1 ? a : a * (1 - t) * (1 - t);
+      ctx.fillStyle = "rgba(0,0,0," + passAlpha.toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.ellipse(cx, y, rx + grow, ry + grow * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPetDeathAnimation(d) {
+    var elapsed = performance.now() - d.deathT0;
+    var p = Math.max(0, elapsed / PET_DEATH_MS);
+    var cx = d.x;
+    var cy = d.y;
+    var hw = d.dim.hw;
+    var hh = d.dim.hh;
+    var glowMax = Math.max(70, Math.max(hw, hh) * 2.4);
+    var ballSize = Math.max(8, Math.min(128, Number(d.ballSize) || 28));
+    var groundY = cy + hh * 0.92 - ballSize / 2;
+
+    if (p < 0.16) {
+      var stretch = smoothEase(p / 0.16);
+      drawWhiteGlow(cx, cy, glowMax * (0.25 + stretch * 0.55), 0.35 + stretch * 0.35);
+      drawWhiteGlow(cx, cy, glowMax * (0.12 + stretch * 0.3), 0.35);
+      ctx.save();
+      ctx.globalAlpha = 1;
+      drawMobSprite(d.sprite, cx, cy, d.width * (1 + stretch * 0.08), 0, d.face, 1 + stretch * 0.48);
+      ctx.restore();
+      return;
+    }
+
+    if (p < 0.42) {
+      var shrink = smoothEase((p - 0.16) / 0.26);
+      var pulse = Math.sin(shrink * Math.PI) * 0.18;
+      drawWhiteGlow(cx, cy, glowMax * (0.72 + shrink * 0.58 + pulse), 0.75 + shrink * 0.22);
+      drawWhiteGlow(cx, cy, glowMax * (0.32 + shrink * 0.28), 0.45);
+      ctx.save();
+      ctx.globalAlpha = 1 - shrink;
+      drawMobSprite(d.sprite, cx, cy, d.width * (1 - shrink * 0.95), 0, d.face, 1.5 - shrink * 0.5);
+      ctx.restore();
+      return;
+    }
+
+    if (p < 0.64) {
+      var fade = smoothEase((p - 0.42) / 0.22);
+      drawWhiteGlow(cx, cy, glowMax * (1.32 - fade * 0.58), 0.95 * (1 - fade));
+      var revealY = groundY - 46 * (1 - fade);
+      drawDeathBallShadow(cx, groundY, ballSize, groundY - revealY, fade * 0.7);
+      drawDeathBall(cx, revealY, ballSize, fade, d.ballSprite, 0);
+      return;
+    }
+
+    if (p < 1) {
+      var drop = (p - 0.64) / 0.36;
+      var y;
+      var squash = 0;
+      var wobble = 0;
+      if (drop < 0.55) {
+        var fallT = drop / 0.55;
+        y = groundY - 46 * (1 - fallT * fallT);
+        squash = 0;
+      } else {
+        var bounceT = (drop - 0.55) / 0.45;
+        var decay = Math.pow(1 - bounceT, 2.2);
+        var bounce = Math.abs(Math.sin(bounceT * Math.PI * 3.2)) * decay * 14;
+        y = groundY - bounce;
+        squash = Math.max(0, Math.sin(bounceT * Math.PI * 3.2)) * decay;
+        wobble = Math.sin(bounceT * Math.PI * 6.4) * Math.pow(1 - bounceT, 1.4);
+      }
+      drawDeathBallShadow(cx, groundY, ballSize, groundY - y, 1);
+      drawDeathBall(cx + wobble * 2.5, y, ballSize, 1, d.ballSprite, Math.abs(squash));
+      return;
+    }
+
+    drawDeathBallShadow(cx, groundY, ballSize, 0, 1);
+    drawDeathBall(cx, groundY, ballSize, 1, d.ballSprite, 0);
+  }
+
+  function drawPetBallCollectAnimation(d) {
+    var elapsed = performance.now() - d.collectT0;
+    var p = Math.max(0, Math.min(1, elapsed / PET_BALL_COLLECT_MS));
+    var cx = d.x;
+    var cy = d.y;
+    var hw = d.dim.hw;
+    var hh = d.dim.hh;
+    var ballSize = Math.max(8, Math.min(128, Number(d.ballSize) || 28));
+    var groundY = cy + hh * 0.92 - ballSize / 2;
+    var shrink = smoothEase(p);
+    var flash = Math.sin(p * Math.PI);
+    drawDeathBallShadow(cx, groundY, ballSize * (1 - shrink * 0.7), 0, 1 - shrink);
+    drawWhiteGlow(cx, groundY, Math.max(24, ballSize * (0.75 + flash * 1.35)), flash * 0.82);
+    if (p < 0.88) {
+      drawDeathBall(cx, groundY, ballSize * (1 - shrink * 0.88), 1 - shrink, d.ballSprite, flash * 0.55);
+    }
+  }
+
+  function drawCoinPile(d) {
+    var elapsed = performance.now() - d.spawnT0;
+    var p = Math.max(0, Math.min(1, elapsed / PET_SPAWN_MS));
+    var spawning = p < 1;
+    var show = smoothEase(Math.min(1, p / 0.28));
+    var overshoot = Math.sin(Math.min(1, p) * Math.PI) * 0.22;
+    var settle = 1 - Math.pow(1 - p, 2);
+    var scale = spawning ? 0.12 + show * (0.88 + overshoot * (1 - settle * 0.35)) : 1;
+    var w = d.size * scale;
+    var halfW = w / 2;
+    var halfH = w / 2;
+    drawShadow(d.x, d.y, halfW * 0.85, halfH * 0.55);
+    if (coinPileImg.complete && coinPileImg.naturalWidth > 0) {
+      var aspect = coinPileImg.naturalHeight / coinPileImg.naturalWidth;
+      var dh = w * aspect;
+      ctx.save();
+      if (d.pickupable && !spawning) {
+        var pulse = 0.18 + Math.sin(performance.now() * 0.005) * 0.12;
+        drawWhiteGlow(d.x, d.y, w * 0.55, pulse);
+      }
+      ctx.drawImage(coinPileImg, d.x - w / 2, d.y - dh + halfH * 0.55, w, dh);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.fillStyle = "#f0c843";
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, w * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    if (spawning) {
+      var glowRadius = Math.max(48, w * (1.6 - p * 0.6));
+      var glowAlpha = (1 - smoothEase(p)) * 0.92;
+      drawWhiteGlow(d.x, d.y, glowRadius, glowAlpha);
+    }
+  }
+
+  function drawCoinPileDespawn(d) {
+    var elapsed = performance.now() - d.removeT0;
+    var p = Math.max(0, Math.min(1, elapsed / COIN_PILE_DESPAWN_MS));
+    var shrink = smoothEase(p);
+    var flash = Math.sin(p * Math.PI);
+    var w = d.size * (1 - shrink * 0.92);
+    var halfW = w / 2;
+    var halfH = w / 2;
+    drawShadow(d.x, d.y, halfW * 0.85 * (1 - shrink * 0.4), halfH * 0.55 * (1 - shrink * 0.4));
+    ctx.save();
+    ctx.globalAlpha = 1 - shrink * 0.35;
+    if (coinPileImg.complete && coinPileImg.naturalWidth > 0) {
+      var aspect = coinPileImg.naturalHeight / coinPileImg.naturalWidth;
+      var dh = w * aspect;
+      drawWhiteGlow(d.x, d.y, Math.max(28, w * (0.65 + flash * 1.2)), flash * 0.85 * (1 - p * 0.5));
+      ctx.drawImage(coinPileImg, d.x - w / 2, d.y - dh + halfH * 0.55, w, dh);
+    } else {
+      ctx.fillStyle = "#f0c843";
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, w * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    drawWhiteGlow(d.x, d.y, Math.max(40, w * (1.4 - p)), (1 - shrink) * 0.55);
+  }
+
+  function drawPetSpawnAnimation(d) {
+    var elapsed = performance.now() - d.spawnT0;
+    var p = Math.max(0, Math.min(1, elapsed / PET_SPAWN_MS));
+    var show = smoothEase(Math.min(1, p / 0.28));
+    var overshoot = Math.sin(Math.min(1, p) * Math.PI) * 0.24;
+    var settle = 1 - Math.pow(1 - p, 2);
+    var scale = 0.12 + show * (0.88 + overshoot * (1 - settle * 0.35));
+    var glowRadius = Math.max(42, Math.max(d.dim.hw, d.dim.hh) * (1.8 - p * 0.65));
+    var glowAlpha = (1 - smoothEase(p)) * 0.92;
+    drawShadow(d.x, d.y, d.dim.hw * scale, d.dim.hh * scale);
+    drawMobSprite(d.sprite, d.x, d.y, d.width * scale, 0, d.face, 1 + overshoot);
+    drawWhiteGlow(d.x, d.y, glowRadius, glowAlpha);
+  }
+
+  function randomAlgebraProblem() {
+    var letter = QUIZ_LETTERS[Math.floor(Math.random() * QUIZ_LETTERS.length)];
+    var hi = Math.max(5, Math.floor(quizMaxNumber));
+    var lo = 2;
+    function r() {
+      return lo + Math.floor(Math.random() * Math.max(1, hi - lo + 1));
+    }
+    var mode = Math.floor(Math.random() * 4);
+    var v = r();
+    var c = r();
+    var text;
+    if (mode === 0) {
+      text = letter + " + " + c + " = " + (v + c);
+    } else if (mode === 1) {
+      if (v < c) { var tmp = v; v = c + r(); c = Math.max(1, Math.min(c, v - 1)); }
+      text = letter + " - " + c + " = " + (v - c);
+    } else if (mode === 2) {
+      if (c < v) { var tmp2 = c; c = v + r(); v = Math.max(1, Math.min(v, c - 1)); }
+      text = c + " - " + letter + " = " + (c - v);
+    } else {
+      text = c + " + " + letter + " = " + (c + v);
+    }
+    return { text: text, answer: v, letter: letter };
+  }
+
+  function randomPlainTwoDigitProblem() {
+    var a = 10 + Math.floor(Math.random() * 90);
+    var b = 10 + Math.floor(Math.random() * 90);
+    if (Math.random() < 0.5) {
+      return { text: String(a) + " + " + String(b) + " = ", answer: a + b, letter: "" };
+    }
+    var x = Math.max(a, b);
+    var y = Math.min(a, b);
+    return { text: String(x) + " - " + String(y) + " = ", answer: x - y, letter: "" };
+  }
+
+  function randomChainProblem() {
+    var numCount = Math.random() < 0.5 ? 2 : 3;
+    var nums = [];
+    var i;
+    for (i = 0; i < numCount; i++) {
+      nums.push(10 + Math.floor(Math.random() * 90));
+    }
+    var acc = nums[0];
+    var text = String(nums[0]);
+    for (i = 1; i < nums.length; i++) {
+      var sub = Math.random() < 0.5;
+      if (sub) {
+        text += " - " + String(nums[i]);
+        acc -= nums[i];
+      } else {
+        text += " + " + String(nums[i]);
+        acc += nums[i];
+      }
+    }
+    text += " = ";
+    return { text: text, answer: acc, letter: "" };
+  }
+
+  function pickQuizProblem() {
+    var mode = quizMode || "algebra_add_sub";
+    if (mode === "plain_add_sub_2digit") return randomPlainTwoDigitProblem();
+    if (mode === "plain_add_sub_chain") return randomChainProblem();
+    return randomAlgebraProblem();
+  }
+
+  function setQuizFeedback(kind, text) {
+    quizFeedbackEl.textContent = text;
+    quizFeedbackEl.className = "show " + kind;
+    setTimeout(function () {
+      if (!pendingQuiz) return;
+      quizFeedbackEl.className = "";
+      quizFeedbackEl.textContent = "";
+    }, 380);
+  }
+
+  function closeQuizModal() {
+    quizModal.classList.remove("open");
+    quizModal.setAttribute("aria-hidden", "true");
+    pendingQuiz = null;
+    quizFeedbackEl.className = "";
+    quizFeedbackEl.textContent = "";
+    setQuizRewardAmount(0);
+  }
+
+  function showQuizForPet(petId) {
+    var pb = pickQuizProblem();
+    var frozen = null;
+    var frozenFacing = 1;
+    for (var qi = 0; qi < pets.length; qi++) {
+      if (Number(pets[qi].id) === Number(petId)) {
+        frozen = { x: Number(pets[qi].x) || 0, y: Number(pets[qi].y) || 0 };
+        frozenFacing = (Number(pets[qi].facing_h) || 1) < 0 ? -1 : 1;
+        break;
+      }
+    }
+    pendingQuiz = {
+      petId: petId,
+      answer: pb.answer,
+      reward: 0,
+      startedAt: performance.now(),
+      expiresAt: performance.now() + QUIZ_DURATION_MS,
+      duration: QUIZ_DURATION_MS,
+      expired: false,
+      frozen: frozen,
+      frozenFacing: frozenFacing
+    };
+    quizProblemEl.textContent = pb.text;
+    if (quizVarLabelEl) {
+      if (quizMode === "algebra_add_sub") {
+        quizVarLabelEl.textContent = (pb.letter || "x") + " =";
+      } else {
+        quizVarLabelEl.textContent = "=";
+      }
+    }
+    quizTimerEl.textContent = (QUIZ_DURATION_MS / 1000).toFixed(1) + "s";
+    updateQuizTimerBar(QUIZ_DURATION_MS, QUIZ_DURATION_MS);
+    quizAnswerEl.value = "";
+    quizFeedbackEl.className = "";
+    quizFeedbackEl.textContent = "";
+    setQuizRewardAmount(0);
+    quizModal.classList.add("open");
+    quizModal.setAttribute("aria-hidden", "false");
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "quiz_begin", pet_id: petId }));
+    }
+    setTimeout(function () { quizAnswerEl.focus(); }, 0);
+  }
+
+  function submitQuizAnswer() {
+    if (!pendingQuiz) return;
+    var raw = (quizAnswerEl.value || "").trim();
+    var n = Number(raw);
+    if (!isFinite(n)) {
+      setQuizFeedback("bad", "Incorrect");
+      playEventSfx("quiz_wrong");
+      return;
+    }
+    if (Math.round(n) === Math.round(pendingQuiz.answer)) {
+      setQuizFeedback("ok", "Correct!");
+      playEventSfx("quiz_correct");
+      var petId = pendingQuiz.petId;
+      setTimeout(function () {
+        closeQuizModal();
+        startAttack(meAttack, lastFacingH || 1);
+        playUserAttackSfx();
+        if (ws && ws.readyState === WebSocket.OPEN && myId) {
+          ws.send(JSON.stringify({ type: "quiz_result", pet_id: petId, success: true }));
+        }
+      }, 360);
+    } else {
+      setQuizFeedback("bad", "Incorrect");
+      playEventSfx("quiz_wrong");
+    }
+  }
+
+  function nearestAttackablePetId() {
+    var best = null;
+    var bestDist = 1e18;
+    for (var i = 0; i < pets.length; i++) {
+      var pet = pets[i];
+      if (pet.collected || pet.defeated) continue;
+      var radius = Math.max(12, (Number(pet.size_px) || 52) * 0.5);
+      var dx = (Number(pet.x) || 0) - me.x;
+      var dy = Math.abs((Number(pet.y) || 0) - me.y);
+      if (dx * (lastFacingH || 1) < -radius) continue;
+      if (Math.abs(dx) > 110 + radius) continue;
+      if (dy > 70 + radius * 0.6) continue;
+      var d = dx * dx + dy * dy;
+      if (d < bestDist) {
+        bestDist = d;
+        best = pet.id;
+      }
+    }
+    return best;
+  }
+
+  function nearestCollectableBallInRange() {
+    for (var i = 0; i < pets.length; i++) {
+      var pet = pets[i];
+      if (pet.kind !== "ball" || pet.collected) continue;
+      var radius = defeatBallSizePx * 0.5;
+      var dx = (Number(pet.x) || 0) - me.x;
+      var dy = Math.abs((Number(pet.y) || 0) - me.y);
+      if (dx * (lastFacingH || 1) < -radius) continue;
+      if (Math.abs(dx) > 110 + radius) continue;
+      if (dy > 70 + radius * 0.6) continue;
+      return true;
+    }
+    return false;
   }
 
   function draw() {
@@ -313,27 +1620,77 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       var dh = ih * scale;
       var dx = (w - dw) / 2;
       var dy = (h - dh) / 2;
-      ctx.drawImage(bg, 0, 0, iw, ih, dx, dy, dw, dh);
+      if (worldMirrored) {
+        ctx.save();
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(bg, 0, 0, iw, ih, dx, dy, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(bg, 0, 0, iw, ih, dx, dy, dw, dh);
+      }
     } else {
       ctx.fillStyle = "#334";
       ctx.fillRect(0, 0, w, h);
     }
 
-    ctx.fillStyle = "#393";
-    for (var i = 0; i < npcs.length; i++) {
-      var n = npcs[i];
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "12px sans-serif";
-      ctx.fillText(n.name, n.x - 20, n.y - 24);
-      ctx.fillStyle = "#393";
+    var floorDrawables = [];
+    var mobDrawables = [];
+    for (var oi = 0; oi < obstacles.length; oi++) {
+      var o = obstacles[oi];
+      var ow = Math.max(24, Number(o.width_px) || 120);
+      var oh = Math.max(24, Number(o.height_px) || 120);
+      mobDrawables.push({
+        obstacle: true,
+        x: Number(o.x) || 0,
+        y: Number(o.y) || 0,
+        sprite: o.sprite || "",
+        width: ow,
+        height: oh,
+        dim: { hw: ow / 2, hh: oh / 2 },
+        flipped: !!Number(o.sprite_flipped || 0),
+        hitboxH: Math.max(8, Number(o.hit_h_px) || Math.round(oh / 3))
+      });
     }
-
-    var drawables = [];
     for (var pi = 0; pi < pets.length; pi++) {
       var pet = pets[pi];
+      if (pet.kind === "ball") {
+        var ballKey = "ball:" + String(pet.id || "");
+        var br = petRender[ballKey];
+        if (!br) {
+          br = { x: pet.x, y: pet.y, collectedPrev: !!pet.collected, collectT0: 0 };
+          petRender[ballKey] = br;
+        }
+        br.x = Number(pet.x) || br.x;
+        br.y = Number(pet.y) || br.y;
+        if (pet.collected && !br.collectedPrev) br.collectT0 = performance.now();
+        br.collectedPrev = !!pet.collected;
+        if (pet.collected) {
+          if (performance.now() - br.collectT0 < PET_BALL_COLLECT_MS) {
+            floorDrawables.push({
+              floorZ: 1,
+              collect: true,
+              x: br.x,
+              y: br.y,
+              dim: { hw: defeatBallSizePx / 2, hh: defeatBallSizePx / 2 },
+              ballSprite: defeatBallSprite,
+              ballSize: defeatBallSizePx,
+              collectT0: br.collectT0
+            });
+          }
+        } else {
+          floorDrawables.push({
+            floorZ: 1,
+            ball: true,
+            x: br.x,
+            y: br.y,
+            dim: { hw: defeatBallSizePx / 2, hh: defeatBallSizePx / 2 },
+            ballSprite: defeatBallSprite,
+            ballSize: defeatBallSizePx
+          });
+        }
+        continue;
+      }
       var pr = petRender[pet.id];
       if (!pr) {
         pr = {
@@ -347,14 +1704,119 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
           relaxT0: 0,
           relaxPhase: 0,
           attack: { active: false, t0: 0, facingH: (Number(pet.facing_h) || 1) < 0 ? -1 : 1 },
-          lastServerAttack: false
+          lastServerAttack: false,
+          deathT0: pet.defeated && !pet.collected ? performance.now() - PET_DEATH_MS : 0,
+          collectT0: pet.collected ? performance.now() - PET_BALL_COLLECT_MS : 0,
+          spawnT0: 0,
+          collectedPrev: !!pet.collected,
+          spawnSeq: Number(pet.spawn_seq) || 0,
+          warmed: false
         };
         petRender[pet.id] = pr;
+      } else if (!pr.warmed || performance.now() < petRenderWarmupUntil) {
+        pr.x = pet.x;
+        pr.y = pet.y;
+        pr.prevX = pet.x;
+        pr.prevY = pet.y;
+        pr.walkPhase = 0;
+        pr.movingPrev = false;
+        pr.relaxing = false;
+        if (performance.now() >= petRenderWarmupUntil) pr.warmed = true;
+      } else if (
+        pendingQuiz &&
+        !pendingQuiz.expired &&
+        Number(pendingQuiz.petId) === Number(pet.id)
+      ) {
+        if (pendingQuiz.frozen) {
+          pr.x = pendingQuiz.frozen.x;
+          pr.y = pendingQuiz.frozen.y;
+          pr.prevX = pendingQuiz.frozen.x;
+          pr.prevY = pendingQuiz.frozen.y;
+        }
+        pr.walkPhase = 0;
+        pr.movingPrev = false;
+        pr.relaxing = false;
       } else {
         pr.prevX = pr.x;
         pr.prevY = pr.y;
         pr.x += (pet.x - pr.x) * 0.2;
         pr.y += (pet.y - pr.y) * 0.2;
+      }
+      var defeated = !!pet.defeated || Number(pet.health) <= 0;
+      var pwidth = Math.max(24, Math.min(256, Number(pet.size_px) || 52));
+      var purl = pet.attacking && pet.attack_sprite ? pet.attack_sprite : pet.sprite;
+      var quizFrozenPet =
+        pendingQuiz &&
+        !pendingQuiz.expired &&
+        Number(pendingQuiz.petId) === Number(pet.id);
+      if (quizFrozenPet) {
+        purl = pet.sprite;
+      }
+      var pd = spriteHalfExtents(purl, pwidth);
+      var collected = !!pet.collected;
+      var petSpawnSeq = Number(pet.spawn_seq) || 0;
+      if (!collected && pr.collectedPrev) {
+        pr.x = pet.x;
+        pr.y = pet.y;
+        pr.prevX = pet.x;
+        pr.prevY = pet.y;
+        pr.spawnT0 = performance.now();
+        pr.deathT0 = 0;
+        pr.collectT0 = 0;
+      }
+      pr.collectedPrev = collected;
+      if (!collected && petSpawnSeq !== pr.spawnSeq) {
+        pr.x = pet.x;
+        pr.y = pet.y;
+        pr.prevX = pet.x;
+        pr.prevY = pet.y;
+        pr.spawnT0 = performance.now();
+        pr.deathT0 = 0;
+        pr.collectT0 = 0;
+        pr.walkPhase = 0;
+      }
+      pr.spawnSeq = petSpawnSeq;
+      if (collected) {
+        if (!pr.collectT0) pr.collectT0 = performance.now();
+        var collectElapsed = performance.now() - pr.collectT0;
+        if (collectElapsed < PET_BALL_COLLECT_MS) {
+          floorDrawables.push({
+            floorZ: 1,
+            collect: true,
+            self: false,
+            x: pr.x,
+            y: pr.y,
+            dim: pd,
+            ballSprite: defeatBallSprite,
+            ballSize: defeatBallSizePx,
+            collectT0: pr.collectT0
+          });
+        }
+        continue;
+      }
+      if (defeated) {
+        if (!pr.deathT0) pr.deathT0 = performance.now();
+        pr.x = pet.x;
+        pr.y = pet.y;
+        pr.prevX = pet.x;
+        pr.prevY = pet.y;
+        mobDrawables.push({
+          death: true,
+          self: false,
+          x: pr.x,
+          y: pr.y,
+          sprite: purl,
+          width: pwidth,
+          face: (Number(pet.facing_h) || 1) < 0 ? -1 : 1,
+          dim: pd,
+          ballSprite: defeatBallSprite,
+          ballSize: defeatBallSizePx,
+          deathT0: pr.deathT0
+        });
+        continue;
+      } else {
+        pr.deathT0 = 0;
+        pr.collectT0 = 0;
       }
       var sleeping = !!pet.sleeping;
       var pwob = 0;
@@ -392,36 +1854,84 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
           pwob = Math.abs(Math.sin(pr.walkPhase || 0));
         }
       }
-      if (pet.attacking && !pr.lastServerAttack && pet.attack_sprite) {
+      if (
+        pet.attacking &&
+        !pr.lastServerAttack &&
+        pet.attack_sprite &&
+        !quizFrozenPet
+      ) {
         startAttack(pr.attack, (Number(pet.facing_h) || 1) < 0 ? -1 : 1);
+        if (pet.attack_sfx_url) {
+          playPetAttackSfx(pet.attack_sfx_url, pet.attack_sfx_volume_pct);
+        }
       }
       pr.lastServerAttack = !!pet.attacking;
-      var pAtk = getAttackRenderState(pr.attack, (Number(pet.facing_h) || 1) < 0 ? -1 : 1);
-      var purl = pet.attacking && pet.attack_sprite ? pet.attack_sprite : pet.sprite;
-      var pwidth = Math.max(24, Math.min(256, Number(pet.size_px) || 52));
-      var pd = spriteHalfExtents(purl, pwidth);
-      drawables.push({
+      if (quizFrozenPet) pwob = 0;
+      var prevPetHealth = pr.lastHealth;
+      var nowPetHealth = Number(pet.health);
+      if (
+        prevPetHealth !== undefined &&
+        nowPetHealth < prevPetHealth &&
+        nowPetHealth > 0 &&
+        !defeated
+      ) {
+        pr.hurtT0 = performance.now();
+      }
+      pr.lastHealth = nowPetHealth;
+      var pAtk = getAttackRenderState(
+        quizFrozenPet ? { active: false, t0: 0, facingH: 1 } : pr.attack,
+        quizFrozenPet
+          ? (pendingQuiz.frozenFacing || 1)
+          : (Number(pet.facing_h) || 1) < 0
+            ? -1
+            : 1
+      );
+      var petFaceDraw = pAtk.facingH;
+      mobDrawables.push({
         self: false,
         x: pr.x,
         y: pr.y,
         sprite: pAtk.useAttackSprite && pet.attack_sprite ? pet.attack_sprite : purl,
         width: pwidth,
         wobble: pwob,
-        face: pAtk.facingH,
+        face: petFaceDraw,
         extraScaleX: pAtk.extraScaleX,
         dim: pd,
+        spawn: pr.spawnT0 && performance.now() - pr.spawnT0 < PET_SPAWN_MS,
+        spawnT0: pr.spawnT0,
         bubble: false,
         bubbleText: "",
-        name: pet.name || "Pet"
+        name: (pet.instance_name ? pet.instance_name + " (" + (pet.name || "Pet") + ")" : (pet.name || "Pet")),
+        shiny: !!pet.shiny,
+        health: pet.health,
+        maxHealth: pet.max_health || 100,
+        showHealth: true,
+        hurtT0: pr.hurtT0 || 0
       });
     }
     for (var pid in peers) {
       if (!Object.prototype.hasOwnProperty.call(peers, pid)) continue;
       var p = peers[pid];
+      if (p.dead) {
+        if (!p.deathT0) p.deathT0 = performance.now();
+        mobDrawables.push({
+          dead: true,
+          x: p.x,
+          y: p.y,
+          sprite: p.sprite,
+          width: normSpriteWidth(p.spriteWidthPx),
+          face: p.facingH || p.lastHx || 1,
+          dim: spriteHalfExtents(p.sprite, normSpriteWidth(p.spriteWidthPx)),
+          deathT0: p.deathT0,
+          ballSprite: defeatBallSprite,
+          ballSize: defeatBallSizePx
+        });
+        continue;
+      }
       var pAtk = getAttackRenderState(p.attack, p.facingH || p.lastHx || 1);
       var pw = normSpriteWidth(p.spriteWidthPx);
       var pdim0 = spriteHalfExtents(p.sprite, pw);
-      drawables.push({
+      mobDrawables.push({
         id: pid,
         self: false,
         x: p.x,
@@ -434,34 +1944,192 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         dim: pdim0,
         bubble: p.speechUntil && performance.now() < p.speechUntil,
         bubbleText: p.speechText || p.shoutGreeting || "Hello!",
-        name: p.name || pid
+        name: p.name || pid,
+        score: p.captureCount,
+        shiny: !!p.transformedShiny,
+        health: p.health,
+        maxHealth: p.maxHealth || 100,
+        showHealth: true,
+        hurtT0: p.hurtT0 || 0
       });
     }
     var mw = normSpriteWidth(me.spriteWidthPx);
     var mdim0 = spriteHalfExtents(me.sprite, mw);
     var meAtk = getAttackRenderState(meAttack, lastFacingH || 1);
-    drawables.push({
-      self: true,
-      x: me.x,
-      y: me.y,
-      sprite: meAtk.useAttackSprite && me.attackSprite ? me.attackSprite : me.sprite,
-      width: mw,
-      wobble: meDrawWobble,
-      face: meAtk.facingH,
-      extraScaleX: meAtk.extraScaleX,
-      dim: mdim0,
-      bubble: mySpeechUntil && performance.now() < mySpeechUntil,
-      bubbleText: me.shoutGreeting || "Hello!",
-      name: me.name
+    var meSpawning = me.spawnT0 && performance.now() - me.spawnT0 < PET_SPAWN_MS;
+    if (meDespawnT0) {
+      mobDrawables.push({
+        meDespawn: true,
+        x: me.x,
+        y: me.y,
+        sprite: me.sprite,
+        width: mw,
+        face: lastFacingH || 1,
+        dim: mdim0,
+        despawnT0: meDespawnT0
+      });
+    } else if (meSpawning) {
+      mobDrawables.push({
+        spawn: true,
+        x: me.x,
+        y: me.y,
+        sprite: me.sprite,
+        width: mw,
+        face: lastFacingH || 1,
+        dim: mdim0,
+        spawnT0: me.spawnT0
+      });
+    } else if (me.dead) {
+      if (!me.deathT0) me.deathT0 = performance.now();
+      mobDrawables.push({
+        dead: true,
+        x: me.x,
+        y: me.y,
+        sprite: me.sprite,
+        width: mw,
+        face: lastFacingH || 1,
+        dim: mdim0,
+        deathT0: me.deathT0,
+        ballSprite: defeatBallSprite,
+        ballSize: defeatBallSizePx
+      });
+    } else {
+      mobDrawables.push({
+        self: true,
+        x: me.x,
+        y: me.y,
+        sprite: meAtk.useAttackSprite && me.attackSprite ? me.attackSprite : me.sprite,
+        width: mw,
+        wobble: meDrawWobble,
+        face: meAtk.facingH,
+        extraScaleX: meAtk.extraScaleX,
+        dim: mdim0,
+        bubble: mySpeechUntil && performance.now() < mySpeechUntil,
+        bubbleText: me.shoutGreeting || "Hello!",
+        name: me.name,
+        score: me.captureCount,
+        shiny: !!me.transformedShiny,
+        health: me.health,
+        maxHealth: me.maxHealth || 100,
+        showHealth: true,
+        hurtT0: me.hurtT0 || 0
+      });
+    }
+
+    for (var ci = 0; ci < coinPiles.length; ci++) {
+      var cp = coinPiles[ci];
+      var cpr = coinPileRender[cp.id];
+      if (!cpr) {
+        cpr = {
+          spawnT0: performance.now(),
+          x: cp.x,
+          y: cp.y,
+          size_px: Number(cp.size_px) || 130
+        };
+        coinPileRender[cp.id] = cpr;
+      }
+      var cpSize = Number(cp.size_px) || 130;
+      cpr.size_px = cpSize;
+      floorDrawables.push({
+        floorZ: 0,
+        coinPile: true,
+        x: cpr.x,
+        y: cpr.y,
+        dim: { hw: cpSize / 2, hh: cpSize / 2 },
+        size: cpSize,
+        pickupable: !!cp.pickupable,
+        spawnT0: cpr.spawnT0
+      });
+    }
+
+    for (var remId in coinPileRemoving) {
+      if (!Object.prototype.hasOwnProperty.call(coinPileRemoving, remId)) continue;
+      var rem = coinPileRemoving[remId];
+      var remElapsed = performance.now() - rem.removeT0;
+      if (remElapsed >= COIN_PILE_DESPAWN_MS) {
+        delete coinPileRemoving[remId];
+        continue;
+      }
+      var rsz = Number(rem.size) || 130;
+      floorDrawables.push({
+        floorZ: 0,
+        coinPileDespawn: true,
+        x: rem.x,
+        y: rem.y,
+        dim: { hw: rsz / 2, hh: rsz / 2 },
+        size: rsz,
+        removeT0: rem.removeT0
+      });
+    }
+
+    floorDrawables.sort(function (a, b) {
+      var ay = a.y + a.dim.hh;
+      var by = b.y + b.dim.hh;
+      if (Math.abs(ay - by) > 0.5) return ay - by;
+      return (a.floorZ || 0) - (b.floorZ || 0);
+    });
+    mobDrawables.sort(function (a, b) {
+      return a.y + a.dim.hh - (b.y + b.dim.hh);
     });
 
-    drawables.sort(function (a, b) {
-      return (a.y + a.dim.hh) - (b.y + b.dim.hh);
-    });
-
-    for (var di = 0; di < drawables.length; di++) {
-      var d = drawables[di];
+    function drawOneDrawable(d) {
+      if (d.meDespawn) {
+        drawPlayerDespawn(d);
+        return;
+      }
+      if (d.dead) {
+        drawPetDeathAnimation(d);
+        return;
+      }
+      if (d.death) {
+        drawPetDeathAnimation(d);
+        return;
+      }
+      if (d.collect) {
+        drawPetBallCollectAnimation(d);
+        return;
+      }
+      if (d.ball) {
+        var bty = d.y;
+        drawDeathBallShadow(d.x, bty, d.ballSize, 0, 1);
+        drawDeathBall(d.x, bty, d.ballSize, 1, d.ballSprite, 0);
+        return;
+      }
+      if (d.coinPileDespawn) {
+        drawCoinPileDespawn(d);
+        return;
+      }
+      if (d.coinPile) {
+        drawCoinPile(d);
+        return;
+      }
+      if (d.spawn) {
+        drawPetSpawnAnimation(d);
+        return;
+      }
+      if (d.obstacle) {
+        var imObs = d.sprite ? cacheImg(d.sprite) : null;
+        var hwObs = d.width / 2;
+        var hhObs = d.height / 2;
+        ctx.save();
+        ctx.translate(d.x, d.y);
+        ctx.scale(d.flipped ? -1 : 1, 1);
+        if (imObs && imObs.complete && imObs.naturalWidth > 0) {
+          ctx.drawImage(imObs, -hwObs, -hhObs, d.width, d.height);
+        } else {
+          ctx.fillStyle = "rgba(70,80,96,0.65)";
+          ctx.fillRect(-hwObs, -hhObs, d.width, d.height);
+        }
+        ctx.restore();
+        return;
+      }
       drawShadow(d.x, d.y, d.dim.hw, d.dim.hh);
+      var hadFilter = false;
+      if (d.shiny) {
+        ctx.save();
+        try { ctx.filter = "sepia(0.85) saturate(2.6) hue-rotate(-12deg) brightness(1.1)"; hadFilter = true; }
+        catch (e) {}
+      }
       var dim = drawMobSprite(
         d.sprite,
         d.x,
@@ -469,20 +2137,108 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         d.width,
         d.wobble,
         d.face,
-        d.extraScaleX
+        d.extraScaleX,
+        d.hurtT0
       );
+      if (hadFilter) ctx.restore();
+      if (d.shiny) drawShinySparkles(d.x, d.y, dim.hw, dim.hh);
       if (d.bubble) {
         drawSpeechBubble(d.x, d.y - dim.hh, d.bubbleText);
       }
-      drawName(d.x, d.y, dim.hw, dim.hh, d.name, d.self ? 13 : 12);
+      if (d.health !== undefined && d.showHealth) {
+        drawHealthBar(d.x, d.y - dim.hh, d.health, d.maxHealth);
+      }
+      drawName(d.x, d.y, dim.hw, dim.hh, d.name, d.score, d.self ? 13 : 12);
+    }
+
+    for (var fi = 0; fi < floorDrawables.length; fi++) {
+      drawOneDrawable(floorDrawables[fi]);
+    }
+    ctx.fillStyle = "#393";
+    for (var ni = 0; ni < npcs.length; ni++) {
+      var n = npcs[ni];
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(n.name, n.x - 20, n.y - 24);
+      ctx.fillStyle = "#393";
+    }
+    for (var mi = 0; mi < mobDrawables.length; mi++) {
+      drawOneDrawable(mobDrawables[mi]);
+    }
+
+    if (((pendingQuiz && !pendingQuiz.expired) || backpackOpen) && !me.dead) {
+      drawThinkingSpiral(me.x, me.y - mdim0.hh - 26);
     }
 
     requestAnimationFrame(draw);
   }
 
+  function drawPlayerDespawn(d) {
+    var elapsed = performance.now() - d.despawnT0;
+    var t = Math.max(0, Math.min(1, elapsed / ME_DESPAWN_MS));
+    var shrink = smoothEase(t);
+    var flash = 0.55 * Math.sin(t * Math.PI);
+    drawShadow(d.x, d.y, d.dim.hw * (1 - shrink * 0.7), d.dim.hh * (1 - shrink * 0.7));
+    var w = d.width * (1 - shrink * 0.95);
+    if (w > 1) {
+      ctx.save();
+      ctx.globalAlpha = 1 - shrink;
+      drawMobSprite(d.sprite, d.x, d.y, w, 0, d.face, 1 + flash * 0.4);
+      ctx.restore();
+    }
+  }
+
+  function drawShinySparkles(cx, cy, hw, hh) {
+    var t = performance.now() / 1000;
+    var sparkles = ["✨", "⭐", "🌟"];
+    for (var i = 0; i < 3; i++) {
+      var phase = i * (Math.PI * 2 / 3) + t * 1.4;
+      var rx = hw * 1.05;
+      var ry = hh * 0.85;
+      var ox = Math.cos(phase) * rx;
+      var oy = -hh * 0.6 + Math.sin(phase * 1.3) * ry * 0.45;
+      var size = 16 + 3 * Math.sin(t * 3 + i);
+      ctx.save();
+      ctx.font = size + "px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(212,167,44,0.6)";
+      ctx.shadowBlur = 6;
+      ctx.fillText(sparkles[i % sparkles.length], cx + ox, cy + oy);
+      ctx.restore();
+    }
+  }
+
+  function drawThinkingSpiral(cx, cy) {
+    var t = performance.now() / 1000;
+    var spin = (t * 1.6) % (Math.PI * 2);
+    var pulse = 1 + 0.06 * Math.sin(t * 6);
+    var size = 36 * pulse;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(spin);
+    ctx.font = size + "px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 6;
+    ctx.fillText("\uD83C\uDF00", 0, 0);
+    ctx.restore();
+  }
+
   function sendMove() {
     if (!ws || ws.readyState !== WebSocket.OPEN || !myId) return;
-    ws.send(JSON.stringify({ type: "move", x: me.x, y: me.y, facing_h: lastFacingH || 1 }));
+    ws.send(JSON.stringify({
+      type: "move",
+      x: me.x,
+      y: me.y,
+      facing_h: lastFacingH || 1,
+      viewport_w: canvas.width,
+      viewport_h: canvas.height
+    }));
   }
 
   function applySettings(msg) {
@@ -499,9 +2255,32 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       shadowHeightPct = Math.max(50, Math.min(160, Number(msg.shadow_height_pct) || shadowHeightPct));
     if (msg.shadow_blur_px !== undefined)
       shadowBlurPx = Math.max(0, Math.min(40, Number(msg.shadow_blur_px) || shadowBlurPx));
-    if (msg.music_url !== undefined) {
-      bgMusic.src = msg.music_url || "";
-      bgMusic.preload = "auto";
+    if (msg.music_url !== undefined) setBgMusicUrl(msg.music_url || "");
+    if (msg.defeat_ball_url !== undefined) {
+      defeatBallSprite = msg.defeat_ball_url || "";
+      cacheImg(defeatBallSprite);
+    }
+    if (msg.defeat_ball_size_px !== undefined)
+      defeatBallSizePx = Math.max(8, Math.min(128, Number(msg.defeat_ball_size_px) || defeatBallSizePx));
+    if (msg.quiz_max_number !== undefined)
+      quizMaxNumber = Math.max(5, Math.min(999, Number(msg.quiz_max_number) || quizMaxNumber));
+    if (msg.quiz_mode !== undefined) {
+      var qm = String(msg.quiz_mode || "").trim();
+      if (
+        qm === "algebra_add_sub" ||
+        qm === "plain_add_sub_2digit" ||
+        qm === "plain_add_sub_chain"
+      ) {
+        quizMode = qm;
+      }
+    }
+    if (msg.world_music_volume_pct !== undefined && msg.world_music_volume_pct !== null) {
+      var wm = Number(msg.world_music_volume_pct);
+      if (Number.isFinite(wm))
+        worldMusicVolPct = Math.max(0, Math.min(100, wm));
+    }
+    if (msg.event_sfx !== undefined && msg.event_sfx && typeof msg.event_sfx === "object") {
+      eventSfxConfig = msg.event_sfx;
     }
     applyAudioSettings();
     resizeCanvas();
@@ -539,6 +2318,16 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       spriteWidthPx: normSpriteWidth(msg.sprite_width_px),
       facingH: (Number(msg.facing_h) || 1) < 0 ? -1 : 1,
       attackSprite: msg.attack_sprite || "",
+      defeatCount: Number(msg.defeat_count) || 0,
+      captureCount: Number(msg.capture_count) || 0,
+      health: Number(msg.health) || 100,
+      maxHealth: Number(msg.max_health) || 100,
+      dead: !!msg.dead,
+      spawnSeq: Number(msg.spawn_seq) || 0,
+      transformedShiny: !!msg.transformed_shiny,
+      hurtT0: 0,
+      deathT0: 0,
+      spawnT0: 0,
       attack: { active: false, t0: 0, facingH: (Number(msg.facing_h) || 1) < 0 ? -1 : 1 }
     };
   }
@@ -564,10 +2353,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     p.movingPrev = moving;
   }
 
+  var currentWorldBgUrl = "";
+
   function connect() {
     bg.onload = function () { bgOk = true; };
     bg.onerror = function () { bgOk = false; };
-    bg.src = "/world-background";
 
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     ws = new WebSocket(proto + "//" + location.host + "/ws");
@@ -596,16 +2386,28 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         }
         return;
       }
+      if (msg.type === "quiz_reward") {
+        if (pendingQuiz && Number(msg.pet_id) === Number(pendingQuiz.petId)) {
+          pendingQuiz.reward = Number(msg.reward) || 0;
+          setQuizRewardAmount(pendingQuiz.reward);
+        }
+        return;
+      }
       if (msg.type === "user_profile") {
         var aidp = msg.account_id;
         var wpx = normSpriteWidth(msg.sprite_width_px);
+        var shinyP = msg.transformed_shiny;
         if (aidp === myAccountId) {
           me.spriteWidthPx = wpx;
+          if (shinyP !== undefined) me.transformedShiny = !!shinyP;
           resizeCanvas();
         }
         for (var up in peers) {
           if (!Object.prototype.hasOwnProperty.call(peers, up)) continue;
-          if (peers[up].account_id === aidp) peers[up].spriteWidthPx = wpx;
+          if (peers[up].account_id === aidp) {
+            peers[up].spriteWidthPx = wpx;
+            if (shinyP !== undefined) peers[up].transformedShiny = !!shinyP;
+          }
         }
         return;
       }
@@ -613,8 +2415,79 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         applySettings(msg);
         return;
       }
+      if (msg.type === "music") {
+        applySettings({
+          music_url: msg.music_url || "",
+          world_music_volume_pct: msg.world_music_volume_pct
+        });
+        return;
+      }
+      if (msg.type === "score") {
+        if (msg.id === myId) {
+          var prevDc = Number(me.defeatCount) || 0;
+          me.defeatCount = Number(msg.defeat_count) || 0;
+          if (msg.capture_count !== undefined) {
+            me.captureCount = Number(msg.capture_count) || 0;
+          }
+          if ((Number(me.defeatCount) || 0) > prevDc) playEventSfx("pet_defeat");
+        } else if (msg.id && peers[msg.id]) {
+          peers[msg.id].defeatCount = Number(msg.defeat_count) || 0;
+          if (msg.capture_count !== undefined) {
+            peers[msg.id].captureCount = Number(msg.capture_count) || 0;
+          }
+        }
+        return;
+      }
+      if (msg.type === "player_state") {
+        if (msg.world_screen != null && Number(msg.world_screen) !== Number(me.worldScreen)) return;
+        if (msg.id === myId) {
+          me.x = Number(msg.x) || me.x;
+          me.y = Number(msg.y) || me.y;
+          var prevMeHp = Number(me.health);
+          var newMeHp = Number(msg.health);
+          if (isFinite(newMeHp)) {
+            if (isFinite(prevMeHp) && newMeHp < prevMeHp && newMeHp > 0 && !msg.dead) {
+              me.hurtT0 = performance.now();
+            }
+            me.health = newMeHp;
+          }
+          me.maxHealth = Number(msg.max_health) || me.maxHealth;
+          var wasDead = !!me.dead;
+          me.dead = !!msg.dead;
+          if (!wasDead && me.dead) {
+            me.deathT0 = performance.now();
+            scheduleDeathModal();
+            playEventSfx("player_death");
+          }
+          if (wasDead && !me.dead) me.spawnT0 = performance.now();
+          me.spawnSeq = Number(msg.spawn_seq) || me.spawnSeq;
+        } else if (msg.id && peers[msg.id]) {
+          var pp = peers[msg.id];
+          pp.x = Number(msg.x) || pp.x;
+          pp.y = Number(msg.y) || pp.y;
+          var prevPpHp = Number(pp.health);
+          var newPpHp = Number(msg.health);
+          if (isFinite(newPpHp)) {
+            if (isFinite(prevPpHp) && newPpHp < prevPpHp && newPpHp > 0 && !msg.dead) {
+              pp.hurtT0 = performance.now();
+            }
+            pp.health = newPpHp;
+          }
+          pp.maxHealth = Number(msg.max_health) || pp.maxHealth;
+          var wasDead2 = !!pp.dead;
+          pp.dead = !!msg.dead;
+          if (!wasDead2 && pp.dead) pp.deathT0 = performance.now();
+          if (wasDead2 && !pp.dead) pp.spawnT0 = performance.now();
+          pp.spawnSeq = Number(msg.spawn_seq) || pp.spawnSeq;
+        }
+        return;
+      }
       if (msg.type === "pets") {
+        if (msg.world_screen != null && Number(msg.world_screen) !== Number(me.worldScreen)) return;
         pets = msg.pets || [];
+        coinPiles = msg.coin_piles || [];
+        obstacles = msg.obstacles || [];
+        syncCoinPilesFromServer(coinPiles);
         var keep = {};
         for (var kk = 0; kk < pets.length; kk++) keep[pets[kk].id] = true;
         for (var rk in petRender) {
@@ -625,13 +2498,32 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
           if (pets[k].sprite) cacheImg(pets[k].sprite);
           if (pets[k].attack_sprite) cacheImg(pets[k].attack_sprite);
         }
+        for (var ok = 0; ok < obstacles.length; ok++) {
+          if (obstacles[ok].sprite) cacheImg(obstacles[ok].sprite);
+        }
+        return;
+      }
+      if (msg.type === "magicoin") {
+        if (Number(msg.account_id) === Number(myAccountId)) {
+          me.magicoin = Number(msg.magicoin) || 0;
+          updateMagicoinDisplay(me.magicoin);
+          var dlt = Number(msg.delta) || 0;
+          if (dlt !== 0) {
+            showMagicoinDelta(dlt);
+            if (dlt > 0) playEventSfx("magicoin");
+          }
+        }
         return;
       }
       if (msg.type === "reload_world_bg") {
+        if (msg.world_id != null && msg.world_id !== me.worldId) return;
         bgOk = false;
         bg.onload = function () { bgOk = true; };
         bg.onerror = function () { bgOk = false; };
-        bg.src = "/world-background?t=" + (msg.t || Date.now());
+        var base = currentWorldBgUrl
+          ? currentWorldBgUrl.split("?")[0]
+          : "/world-background/" + (me.worldId || 1);
+        bg.src = base + "?t=" + (msg.t || Date.now());
         return;
       }
       if (msg.type === "user_sprite") {
@@ -664,14 +2556,35 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         }
         return;
       }
+      if (msg.type === "user_attack_sfx") {
+        var asAid = msg.account_id;
+        if (asAid === myAccountId) {
+          userAttackSfxUrl = msg.attack_sfx_url || "";
+          userAttackSfxVolPct = Math.max(
+            0,
+            Math.min(100, Number(msg.attack_sfx_volume_pct))
+          );
+          if (!Number.isFinite(userAttackSfxVolPct)) userAttackSfxVolPct = 100;
+        }
+        return;
+      }
       if (msg.type === "hello") {
         myId = msg.id;
         myAccountId = msg.account_id;
+        // Clear transition visuals; the new hello payload will re-drive animations.
+        meDespawnT0 = 0;
         me.name = msg.username || "?";
         me.sprite = msg.sprite || "";
         me.attackSprite = msg.attack_sprite || "";
         me.shoutGreeting = msg.shout_greeting || "Hello!";
         me.spriteWidthPx = normSpriteWidth(msg.sprite_width_px);
+        me.defeatCount = Number(msg.defeat_count) || 0;
+        me.captureCount = Number(msg.capture_count) || 0;
+        me.transformedShiny = !!msg.transformed_shiny;
+        me.health = Number(msg.health) || 100;
+        me.maxHealth = Number(msg.max_health) || 100;
+        me.dead = !!msg.dead;
+        me.spawnSeq = Number(msg.spawn_seq) || 0;
         speechFontPx = Math.max(
           10,
           Math.min(48, Number(msg.speech_font_px) || 20)
@@ -681,10 +2594,82 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         shadowDarknessPct = Math.max(0, Math.min(100, Number(msg.shadow_darkness_pct) || 28));
         shadowHeightPct = Math.max(50, Math.min(160, Number(msg.shadow_height_pct) || 92));
         shadowBlurPx = Math.max(0, Math.min(40, Number(msg.shadow_blur_px) || 0));
-        bgMusic.src = msg.music_url || "";
-        applyAudioSettings();
+        defeatBallSprite = msg.defeat_ball_url || "";
+        defeatBallSizePx = Math.max(8, Math.min(128, Number(msg.defeat_ball_size_px) || 28));
+        quizMaxNumber = Math.max(5, Math.min(999, Number(msg.quiz_max_number) || 30));
+        var qmHello = String(msg.quiz_mode || "").trim();
+        if (
+          qmHello === "algebra_add_sub" ||
+          qmHello === "plain_add_sub_2digit" ||
+          qmHello === "plain_add_sub_chain"
+        ) {
+          quizMode = qmHello;
+        }
+        userAttackSfxUrl = msg.attack_sfx_url || "";
+        userAttackSfxVolPct = Math.max(
+          0,
+          Math.min(100, Number(msg.attack_sfx_volume_pct))
+        );
+        if (!Number.isFinite(userAttackSfxVolPct)) userAttackSfxVolPct = 100;
+        me.worldId = Number(msg.world_id) || 1;
+        var wsHello = Number(msg.world_screen == null ? 1 : msg.world_screen);
+        me.worldScreen = Number.isFinite(wsHello) ? wsHello : 1;
+        worldMirrored = !!msg.world_mirrored;
+        worldScreenTransitionPending = false;
+        worldMusicVolPct = Math.max(
+          0,
+          Math.min(100, Number(msg.world_music_volume_pct))
+        );
+        if (!Number.isFinite(worldMusicVolPct)) worldMusicVolPct = 100;
+        if (msg.event_sfx && typeof msg.event_sfx === "object") {
+          eventSfxConfig = msg.event_sfx;
+        }
+        var prevWorldStored = sessionStorage.getItem("play_prev_world_id");
+        if (prevWorldStored !== null && String(me.worldId) !== prevWorldStored) {
+          playEventSfx("world_enter");
+        }
+        sessionStorage.setItem("play_prev_world_id", String(me.worldId));
+        me.magicoin = Number.isFinite(Number(msg.magicoin)) ? Number(msg.magicoin) : 0;
+        updateMagicoinDisplay(me.magicoin, { immediate: true });
+        currentWorldBgUrl = msg.world_background_url || ("/world-background/" + me.worldId);
+        bgOk = false;
+        bg.onload = function () {
+          bgOk = true;
+          if (
+            pendingWorldTransition &&
+            pendingWorldTransitionWorldId != null &&
+            Number(msg.world_id) === Number(pendingWorldTransitionWorldId)
+          ) {
+            if (fadeOverlay) fadeOverlay.classList.remove("on");
+            worldTransitionInProgress = false;
+            pendingWorldTransition = false;
+            pendingWorldTransitionWorldId = null;
+          }
+        };
+        bg.onerror = function () {
+          bgOk = false;
+          if (
+            pendingWorldTransition &&
+            pendingWorldTransitionWorldId != null &&
+            Number(msg.world_id) === Number(pendingWorldTransitionWorldId)
+          ) {
+            if (fadeOverlay) fadeOverlay.classList.remove("on");
+            worldTransitionInProgress = false;
+            pendingWorldTransition = false;
+            pendingWorldTransitionWorldId = null;
+          }
+        };
+        bg.src = currentWorldBgUrl;
+        setBgMusicUrl(msg.music_url || "");
+        if (pendingWorldTransition && Number(msg.world_id) === Number(pendingWorldTransitionWorldId)) {
+          bgMusic.volume = 0;
+          applyAudioSettings({ fadeMs: 700 });
+        } else {
+          applyAudioSettings();
+        }
         me.x = Number(msg.x) || 400;
         me.y = Number(msg.y) || 300;
+        meCenterOnLoad = !!msg.center_on_load;
         walkPhaseMe = 0;
         movingKeysPrev = false;
         relaxingMe = false;
@@ -695,6 +2680,11 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
         lastFacingH = (Number(msg.facing_h) || 1) < 0 ? -1 : 1;
         npcs = msg.npcs || [];
         pets = msg.pets || [];
+        coinPiles = msg.coin_piles || [];
+        obstacles = msg.obstacles || [];
+        syncCoinPilesFromServer(coinPiles);
+        petRender = {};
+        petRenderWarmupUntil = performance.now() + PET_WARMUP_MS;
         peers = {};
         var pl = msg.players || [];
         for (var j = 0; j < pl.length; j++) {
@@ -705,25 +2695,40 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
           if (pets[kp].sprite) cacheImg(pets[kp].sprite);
           if (pets[kp].attack_sprite) cacheImg(pets[kp].attack_sprite);
         }
+        for (var ko = 0; ko < obstacles.length; ko++) {
+          if (obstacles[ko].sprite) cacheImg(obstacles[ko].sprite);
+        }
         resizeCanvas();
+        if (meCenterOnLoad) {
+          me.x = canvas.width / 2;
+          me.y = canvas.height / 2;
+          lastMeX = me.x;
+          lastMeY = me.y;
+          meCenterOnLoad = false;
+          me.spawnT0 = performance.now();
+        }
         cacheImg(me.sprite);
         cacheImg(me.attackSprite);
+        cacheImg(defeatBallSprite);
         sendMove();
         ws.send(JSON.stringify({ type: "hello" }));
         return;
       }
       if (msg.type === "join") {
+        if (msg.world_screen != null && Number(msg.world_screen) !== Number(me.worldScreen)) return;
         peers[msg.id] = peerTemplate(msg, 0, 1);
         cacheImg(peers[msg.id].sprite);
         cacheImg(peers[msg.id].attackSprite);
       } else if (msg.type === "leave") {
         delete peers[msg.id];
       } else if (msg.type === "attack") {
+        if (msg.world_screen != null && Number(msg.world_screen) !== Number(me.worldScreen)) return;
         if (msg.id === myId) return;
         var pa = peers[msg.id];
         if (!pa || !pa.attackSprite) return;
         startAttack(pa.attack, (Number(msg.facing_h) || pa.facingH || 1) < 0 ? -1 : 1);
       } else if (msg.type === "move") {
+        if (msg.world_screen != null && Number(msg.world_screen) !== Number(me.worldScreen)) return;
         if (msg.id === myId) return;
         var prev = peers[msg.id];
         var ox = prev ? prev.x : msg.x;
@@ -741,6 +2746,12 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
             prev.speechText || peers[msg.id].shoutGreeting || "Hello!";
           if (!msg.facing_h) peers[msg.id].facingH = prev.facingH || peers[msg.id].facingH;
           peers[msg.id].attack = prev.attack || peers[msg.id].attack;
+          if (msg.defeat_count === undefined) peers[msg.id].defeatCount = prev.defeatCount || 0;
+          if (msg.health === undefined) peers[msg.id].health = prev.health || 100;
+          if (msg.max_health === undefined) peers[msg.id].maxHealth = prev.maxHealth || 100;
+          if (msg.dead === undefined) peers[msg.id].dead = !!prev.dead;
+          if (msg.spawn_seq === undefined) peers[msg.id].spawnSeq = prev.spawnSeq || 0;
+          peers[msg.id].hurtT0 = prev.hurtT0 || 0;
         }
         bumpPeerWalk(peers[msg.id], ox, oy);
         cacheImg(peers[msg.id].sprite);
@@ -752,15 +2763,32 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
   }
 
   window.onkeydown = function (e) {
+    if (pwModal && pwModal.classList.contains("open")) return;
+    if (volModal && volModal.classList.contains("open")) return;
+    if (deathModal && deathModal.classList.contains("open")) return;
+    if (backpackOpen) return;
+    if (pendingQuiz && e.code !== "Enter") return;
     if (e.code === "KeyA") {
       if (e.repeat) return;
       e.preventDefault();
-      if (!me.attackSprite || meAttack.active) return;
-      startAttack(meAttack, lastFacingH || 1);
-      playSfx(attackSfx);
-      if (ws && ws.readyState === WebSocket.OPEN && myId) {
-        ws.send(JSON.stringify({ type: "attack" }));
+      if (!me.attackSprite || meAttack.active || pendingQuiz || backpackOpen || me.dead) return;
+      var petId = nearestAttackablePetId();
+      if (petId != null) {
+        quizAttackCount++;
+        if (quizAttackCount % QUIZ_ATTACK_INTERVAL === 0) {
+          showQuizForPet(petId);
+          return;
+        }
+        startAttack(meAttack, lastFacingH || 1);
+        playUserAttackSfx();
+        if (ws && ws.readyState === WebSocket.OPEN && myId) {
+          ws.send(JSON.stringify({ type: "attack", damage_pet: true }));
+        }
+        return;
       }
+      startAttack(meAttack, lastFacingH || 1);
+      playUserAttackSfx();
+      if (ws && ws.readyState === WebSocket.OPEN && myId) ws.send(JSON.stringify({ type: "attack" }));
       return;
     }
     if (e.code === "Space" || e.key === " ") {
@@ -789,7 +2817,37 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     sendMove();
   };
 
+  quizSubmitBtn.addEventListener("click", submitQuizAnswer);
+  quizAnswerEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submitQuizAnswer();
+    }
+  });
+
   function tick() {
+    if (pendingQuiz && !pendingQuiz.expired) {
+      var remain = Math.max(0, pendingQuiz.expiresAt - performance.now());
+      quizTimerEl.textContent = (remain / 1000).toFixed(1) + "s";
+      updateQuizTimerBar(remain, pendingQuiz.duration || 15000);
+      if (remain <= 0) {
+        pendingQuiz.expired = true;
+        var failedPetId = pendingQuiz.petId;
+        setQuizFeedback("fail", "Failure");
+        playEventSfx("quiz_wrong");
+        setTimeout(function () {
+          closeQuizModal();
+          if (ws && ws.readyState === WebSocket.OPEN && myId) {
+            ws.send(JSON.stringify({ type: "quiz_result", pet_id: failedPetId, success: false }));
+          }
+        }, 340);
+      }
+      relaxingMe = false;
+      meDrawWobble = 0;
+      movingKeysPrev = false;
+      requestAnimationFrame(tick);
+      return;
+    }
     var dxKey = 0;
     var dyKey = 0;
     if (keys["arrowleft"]) dxKey -= 1;
@@ -797,21 +2855,31 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
     if (keys["arrowup"] || keys["w"]) dyKey -= 1;
     if (keys["arrowdown"] || keys["s"]) dyKey += 1;
 
-    var movingKeys = (dxKey !== 0 || dyKey !== 0) && !meAttack.active;
+    var movingKeys = (dxKey !== 0 || dyKey !== 0) && !meAttack.active && !pendingQuiz && !backpackOpen && !me.dead && !meDespawnT0;
     var now = performance.now();
     if (movingKeys) {
       var len = Math.sqrt(dxKey * dxKey + dyKey * dyKey) || 1;
       var se = spriteHalfExtents(me.sprite, me.spriteWidthPx);
       var mx = Math.max(se.hw, 8);
       var my = Math.max(se.hh, 8);
-      me.x = Math.min(
+      var nx = Math.min(
         Math.max(mx - EDGE_OUTSET, me.x + (dxKey / len) * speed),
         canvas.width - mx + EDGE_OUTSET
       );
-      me.y = Math.min(
+      var ny = Math.min(
         Math.max(my - EDGE_OUTSET, me.y + (dyKey / len) * speed),
         canvas.height - my + EDGE_OUTSET
       );
+      var pr = Math.max(16, normSpriteWidth(me.spriteWidthPx) * 0.42);
+      if (!blockedByObstacles(nx, me.y, pr, se.hw, se.hh)) me.x = nx;
+      if (!blockedByObstacles(me.x, ny, pr, se.hw, se.hh)) me.y = ny;
+      if (!worldScreenTransitionPending) {
+        if (dxKey < 0 && me.worldScreen > 0 && me.x <= (mx - EDGE_OUTSET + 0.5)) {
+          beginWorldScreenTransition(-1);
+        } else if (dxKey > 0 && me.worldScreen < 2 && me.x >= (canvas.width - mx + EDGE_OUTSET - 0.5)) {
+          beginWorldScreenTransition(1);
+        }
+      }
       if (now >= nextFootstepAt) {
         playSfx(walkSfx);
         nextFootstepAt = now + 175;
@@ -819,6 +2887,18 @@ html,body{margin:0;height:100%;overflow:hidden;background:#111;}
       sendMove();
     } else {
       nextFootstepAt = now;
+    }
+
+    // If spawned/placed overlapping obstacle hitbox, quickly drift right until clear.
+    var meRadius = Math.max(16, normSpriteWidth(me.spriteWidthPx) * 0.42);
+    var meExt = spriteHalfExtents(me.sprite, me.spriteWidthPx);
+    var overlapFix = resolveObstacleOverlapRight(me.x, me.y, meRadius, 220, meExt.hw, meExt.hh);
+    if (overlapFix.moved && overlapFix.x !== me.x) {
+      me.x = Math.min(
+        Math.max(meRadius - EDGE_OUTSET, overlapFix.x),
+        canvas.width - meRadius + EDGE_OUTSET
+      );
+      sendMove();
     }
 
     if (lastMeX === null) {

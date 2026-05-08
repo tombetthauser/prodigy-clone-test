@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Backpack</title>
+<style>
+html,body{margin:0;background:#f4f6fa;font-family:sans-serif;color:#222;}
+header{padding:18px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #dde3ee;background:#fff;position:sticky;top:0;z-index:2;}
+header h1{margin:0;font-size:22px;}
+header .spacer{flex:1 1 auto;}
+header a{color:#6495ed;text-decoration:none;font-weight:700;}
+header a:hover{text-decoration:underline;}
+main{padding:18px 22px 60px;max-width:1100px;margin:0 auto;}
+.summary{background:#fff;padding:14px 16px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,0.05);margin-bottom:18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+.summary .label{color:#666;font-size:14px;}
+.summary .value{font-size:28px;font-weight:800;color:#6495ed;font-variant-numeric:tabular-nums;}
+.section-title{margin:8px 0 10px;font-size:16px;color:#555;text-transform:uppercase;letter-spacing:0.05em;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;}
+.cell{background:#fff;border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.05);cursor:pointer;transition:transform .08s ease, box-shadow .15s ease;border:0;font:inherit;color:inherit;}
+.cell:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.12);}
+.cell:focus-visible{outline:3px solid #6495ed;outline-offset:2px;}
+.cell img{display:block;width:100px;height:100px;object-fit:contain;}
+.cell .name{margin-top:6px;font-size:12px;color:#444;text-align:center;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.empty{padding:40px;text-align:center;color:#888;background:#fff;border-radius:10px;}
+.placeholder{width:100px;height:100px;background:#dbe3f0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7c8aa3;font-size:28px;}
+
+#pet-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,20,32,0.55);z-index:5;}
+#pet-modal.open{display:flex;}
+.modal-card{width:min(620px,92vw);background:#fff;border-radius:18px;padding:22px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,0.35);}
+.modal-card h2{margin:0 0 4px;font-size:24px;display:flex;align-items:center;gap:10px;}
+.modal-card .star{color:#f5b400;font-size:28px;}
+.modal-stage{margin:14px 0 6px;background:#fff;border:2px dashed #cfd6e1;border-radius:14px;height:300px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.modal-stage canvas{display:block;width:100%;height:100%;}
+.modal-meta{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:6px 0 14px;}
+.modal-meta .count-label{color:#666;font-size:14px;}
+.modal-meta .count-value{font-size:24px;font-weight:800;color:#6495ed;font-variant-numeric:tabular-nums;}
+.modal-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;}
+.recycle-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;font-size:15px;font-weight:700;color:#fff;background:#6495ed;border:0;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(100,149,237,0.35);transition:transform .08s ease, background .15s ease, box-shadow .15s ease;}
+.recycle-btn:hover:not(:disabled){background:#5483dc;box-shadow:0 6px 16px rgba(100,149,237,0.45);}
+.recycle-btn:active:not(:disabled){transform:translateY(1px);background:#4a78d2;}
+.recycle-btn:disabled{background:#aab8cf;cursor:not-allowed;box-shadow:none;color:#f0f3fa;}
+.recycle-note{color:#777;font-size:13px;}
+.close-btn{background:transparent;border:0;color:#666;font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px;}
+.close-btn:hover{background:#f0f3fa;color:#222;}
+.toast{margin-top:10px;font-size:14px;color:#1f9a43;font-weight:700;min-height:20px;}
+.toast.bad{color:#d13d3d;}
+
+#buy-pet-modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(15,20,32,0.55);z-index:6;overflow-y:auto;padding:24px 0;}
+#buy-pet-modal.open{display:flex;}
+#buy-pet-card{width:min(720px,94vw);background:#fff;border-radius:18px;padding:22px 24px 20px;box-shadow:0 24px 60px rgba(0,0,0,0.35);}
+#buy-pet-card h2{margin:0 0 4px;font-size:24px;display:flex;align-items:center;gap:10px;}
+.buy-row{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0;}
+.buy-field{flex:1 1 220px;display:flex;flex-direction:column;gap:6px;}
+.buy-field label{font-size:13px;font-weight:700;color:#456;text-transform:uppercase;letter-spacing:0.04em;}
+.buy-field input[type="text"], .buy-field select, .buy-field input[type="number"]{padding:9px 11px;border-radius:8px;border:1px solid #cbd2e0;font-size:15px;}
+.buy-field input[type="text"]:focus, .buy-field select:focus, .buy-field input[type="number"]:focus{outline:none;border-color:#6495ed;box-shadow:0 0 0 3px rgba(100,149,237,0.25);}
+.buy-image-block{flex:1 1 320px;background:#f6f8fc;border-radius:12px;padding:10px 12px;}
+.buy-image-block .title{font-size:13px;font-weight:700;color:#456;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.buy-image-row{display:flex;gap:10px;align-items:center;}
+.buy-thumb{width:84px;height:84px;flex:0 0 84px;background:#fff;border:1px dashed #c2cad9;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9aa3b8;font-size:28px;overflow:hidden;}
+.buy-thumb img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
+.buy-image-controls{display:flex;flex-direction:column;gap:6px;flex:1 1 auto;}
+.buy-image-controls .small{display:flex;gap:6px;flex-wrap:wrap;}
+.buy-image-controls input[type="file"]{font-size:13px;}
+.tiny-btn{padding:5px 9px;border-radius:6px;border:1px solid #cbd2e0;background:#fff;font-size:12px;font-weight:700;color:#234;cursor:pointer;}
+.tiny-btn.active{background:#6495ed;color:#fff;border-color:#5483dc;}
+.tiny-btn:hover:not(:disabled){background:#f0f3fa;}
+.tiny-btn.active:hover{background:#5483dc;}
+.buy-stage{margin:14px 0 6px;background:linear-gradient(180deg,#dff5dc 0%, #c2e6c0 100%);border:2px solid #b6d8b3;border-radius:14px;height:200px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.buy-stage canvas{display:block;width:100%;height:100%;}
+.buy-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-top:8px;}
+.buy-cost{display:flex;align-items:center;gap:6px;font-size:14px;color:#456;font-weight:700;}
+.buy-cost img{width:18px;height:18px;}
+.buy-cost.bad{color:#d13d3d;}
+#buy-pet-toast{margin-top:8px;font-size:14px;color:#1f9a43;font-weight:700;min-height:20px;}
+#buy-pet-toast.bad{color:#d13d3d;}
+.size-slider-row{display:flex;gap:10px;align-items:center;}
+.size-slider-row input[type="range"]{flex:1 1 auto;}
+.size-num{font-variant-numeric:tabular-nums;font-weight:800;color:#234;flex:0 0 56px;text-align:right;}
+
+#buy-world-modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(15,20,32,0.55);z-index:6;overflow-y:auto;padding:24px 0;}
+#buy-world-modal.open{display:flex;}
+#buy-world-preview{display:flex;align-items:center;justify-content:center;border-radius:14px;border:2px dashed #c5cfe1;overflow:hidden;}
+#buy-world-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+#buy-world-toast{margin-top:8px;font-size:14px;color:#1f9a43;font-weight:700;min-height:20px;}
+#buy-world-toast.bad{color:#d13d3d;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎒 Backpack</h1>
+  <span id="player-name" style="color:#888;"></span>
+  <span class="spacer"></span>
+  <a id="back-link" href="/play">← Back to game</a>
+  <form id="logout-form" action="/logout" method="post" style="display:inline-block;margin:0;">
+    <button id="logout-btn" type="submit" style="background:#e6ecf7;border:0;border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;color:#234;cursor:pointer;">Log out</button>
+  </form>
+  <button id="modal-close-btn" type="button" style="display:none;background:#e6ecf7;border:0;border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;color:#234;cursor:pointer;">Close</button>
+</header>
+<script>
+  window.__backpackEmbedded = (function(){
+    var embedded = false;
+    try {
+      var qs = new URLSearchParams(location.search);
+      if (qs.get("embedded") === "1") embedded = true;
+    } catch (e) {}
+    if (window.top !== window.self) embedded = true;
+    if (!embedded) return false;
+    document.documentElement.classList.add("embedded");
+    window.addEventListener("DOMContentLoaded", function () {
+      var bl = document.getElementById("back-link");
+      if (bl) bl.style.display = "none";
+      var btn = document.getElementById("modal-close-btn");
+      if (btn) {
+        btn.style.display = "inline-block";
+        btn.addEventListener("click", function () {
+          try { window.parent.postMessage({ type: "backpack:close" }, "*"); } catch (e) {}
+        });
+      }
+      var lf = document.getElementById("logout-form");
+      if (lf) lf.target = "_top";
+    });
+    return true;
+  })();
+</script>
+<main>
+  <div class="summary">
+    <span class="label">Questions answered correctly:</span>
+    <span class="value" id="correct-answers">0</span>
+    <span class="label" style="margin-left:24px;">Pets captured:</span>
+    <span class="value" id="captured-count">0</span>
+    <span class="label" style="margin-left:24px;">Magicoin:</span>
+    <img id="coin-icon" src="/static-sprites/magicoin/coin.png" alt="" style="width:22px;height:22px;object-fit:contain;">
+    <span class="value" id="magicoin">—</span>
+  </div>
+  <div class="summary" id="health-summary" style="align-items:center;">
+    <span class="label" style="display:flex;align-items:center;gap:6px;">
+      <span aria-hidden="true" style="font-size:20px;">❤️</span>
+      Health
+    </span>
+    <span class="value" id="health-text">—</span>
+    <div id="health-bar" style="flex:1 1 220px;max-width:320px;height:14px;background:#e6ecf7;border-radius:7px;overflow:hidden;border:1px solid #cbd2e0;">
+      <div id="health-fill" style="height:100%;width:100%;background:linear-gradient(90deg,#1f9a43,#5fbf66);transition:width .25s ease;"></div>
+    </div>
+  </div>
+  <div class="summary" id="shop">
+    <span class="label">Shop:</span>
+    <span class="label" style="display:flex;align-items:center;gap:6px;">
+      Health potion (full heal) — costs
+      <img src="/static-sprites/magicoin/coin.png" alt="" style="width:18px;height:18px;object-fit:contain;">
+      <strong id="potion-cost" style="color:#6495ed;">20</strong>
+      magicoin
+    </span>
+    <span class="spacer" style="flex:1 1 auto;"></span>
+    <button id="potion-btn" class="recycle-btn" type="button">
+      <span aria-hidden="true" style="font-size: 25px;">🍬</span><span>Buy a Full-Heal Candy</span>
+    </button>
+    <span id="potion-status" class="toast" style="flex-basis:100%;margin-top:4px;"></span>
+  </div>
+  <div class="summary" id="shop-max-hp">
+    <span class="label">Shop:</span>
+    <span class="label" style="display:flex;align-items:center;gap:6px;">
+      Boost max HP by
+      <strong id="max-hp-boost-amount" style="color:#1f9a43;">25</strong>
+      HP — costs
+      <img src="/static-sprites/magicoin/coin.png" alt="" style="width:18px;height:18px;object-fit:contain;">
+      <strong id="max-hp-cost" style="color:#6495ed;">50</strong>
+      magicoin
+      <small id="max-hp-cap-info" style="color:#888;margin-left:8px;"></small>
+    </span>
+    <span class="spacer" style="flex:1 1 auto;"></span>
+    <button id="max-hp-btn" class="recycle-btn" type="button">
+      <span aria-hidden="true" style="font-size: 22px;">💪</span><span>Boost Max HP</span>
+    </button>
+    <span id="max-hp-status" class="toast" style="flex-basis:100%;margin-top:4px;"></span>
+  </div>
+  <div class="summary" id="shop-buy-pet">
+    <span class="label">Shop:</span>
+    <span class="label" style="display:flex;align-items:center;gap:6px;">
+      Buy a new pet — costs
+      <img src="/static-sprites/magicoin/coin.png" alt="" style="width:18px;height:18px;object-fit:contain;">
+      <strong id="buy-pet-cost-label" style="color:#6495ed;">150</strong>
+      magicoin
+    </span>
+    <span class="spacer" style="flex:1 1 auto;"></span>
+    <button id="open-buy-pet-btn" class="recycle-btn" type="button">
+      <span aria-hidden="true" style="font-size: 22px;">🐾</span><span>Buy a new pet</span>
+    </button>
+  </div>
+  <div class="summary" id="shop-buy-world">
+    <span class="label">Shop:</span>
+    <span class="label" style="display:flex;align-items:center;gap:6px;">
+      Buy a new world — costs
+      <img src="/static-sprites/magicoin/coin.png" alt="" style="width:18px;height:18px;object-fit:contain;">
+      <strong id="buy-world-cost-label" style="color:#6495ed;">250</strong>
+      magicoin
+    </span>
+    <span class="spacer" style="flex:1 1 auto;"></span>
+    <button id="open-buy-world-btn" class="recycle-btn" type="button">
+      <span aria-hidden="true" style="font-size: 22px;">🌍</span><span>Buy a new world</span>
+    </button>
+  </div>
+  <div class="section-title">Captured pets</div>
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none;">No pets captured yet. Defeat NPC pets and collect their balls to fill your backpack!</div>
+</main>
+
+<div id="buy-pet-modal" aria-hidden="true">
+  <div id="buy-pet-card" role="dialog" aria-modal="true" aria-labelledby="buy-pet-title">
+    <div style="display:flex;align-items:flex-start;">
+      <h2 id="buy-pet-title">🐾 Buy a new pet</h2>
+      <span style="flex:1 1 auto;"></span>
+      <button class="close-btn" id="buy-pet-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="buy-row">
+      <div class="buy-field" style="flex:2 1 240px;">
+        <label for="buy-pet-name">Pet name</label>
+        <input id="buy-pet-name" type="text" maxlength="24" placeholder="My pet" value="My pet">
+      </div>
+      <div class="buy-field" style="flex:1 1 200px;">
+        <label for="buy-pet-world">World</label>
+        <select id="buy-pet-world"></select>
+      </div>
+    </div>
+    <div class="buy-row">
+      <div class="buy-image-block">
+        <div class="title">Primary sprite <span style="color:#888;font-weight:600;">(required)</span></div>
+        <div class="buy-image-row">
+          <div class="buy-thumb" id="buy-thumb-sprite"><span aria-hidden="true">🖼️</span></div>
+          <div class="buy-image-controls">
+            <input id="buy-file-sprite" type="file" accept="image/png,image/jpeg">
+            <div class="small">
+              <button class="tiny-btn" id="buy-flip-sprite" type="button">Flip</button>
+              <button class="tiny-btn" id="buy-trim-white-sprite" type="button">Trim white</button>
+              <button class="tiny-btn" id="buy-trim-empty-sprite" type="button">Trim empty</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="buy-image-block">
+        <div class="title">Attack sprite <span style="color:#888;font-weight:600;">(optional)</span></div>
+        <div class="buy-image-row">
+          <div class="buy-thumb" id="buy-thumb-attack"><span aria-hidden="true">⚔️</span></div>
+          <div class="buy-image-controls">
+            <input id="buy-file-attack" type="file" accept="image/png,image/jpeg">
+            <div class="small">
+              <button class="tiny-btn" id="buy-flip-attack" type="button">Flip</button>
+              <button class="tiny-btn" id="buy-trim-white-attack" type="button">Trim white</button>
+              <button class="tiny-btn" id="buy-trim-empty-attack" type="button">Trim empty</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="buy-row">
+      <div class="buy-field" style="flex:1 1 100%;">
+        <label for="buy-size">Size</label>
+        <div class="size-slider-row">
+          <input id="buy-size" type="range" min="25" max="175" step="1" value="80">
+          <span class="size-num" id="buy-size-num">80 px</span>
+        </div>
+      </div>
+    </div>
+    <div class="buy-row">
+      <div class="buy-field" style="flex:2 1 260px;">
+        <label for="buy-attack-sfx">Attack sound (optional)</label>
+        <select id="buy-attack-sfx"><option value="">(none)</option></select>
+      </div>
+      <div class="buy-field" style="flex:1 1 200px;">
+        <label for="buy-attack-sfx-vol">Attack sound volume</label>
+        <div class="size-slider-row">
+          <input id="buy-attack-sfx-vol" type="range" min="0" max="100" step="1" value="100">
+          <span class="size-num" id="buy-attack-sfx-vol-num">100%</span>
+          <button class="tiny-btn" id="buy-attack-sfx-demo" type="button">Demo</button>
+        </div>
+      </div>
+    </div>
+    <div class="buy-stage"><canvas id="buy-stage-canvas" width="600" height="200"></canvas></div>
+    <div class="buy-actions">
+      <span class="buy-cost" id="buy-cost-line">
+        Costs <img src="/static-sprites/magicoin/coin.png" alt=""> <strong id="buy-cost-amount" style="color:#6495ed;">150</strong> magicoin (you have <strong id="buy-balance">0</strong>)
+      </span>
+      <button id="buy-pet-submit" class="recycle-btn" type="button" disabled>
+        <span aria-hidden="true">✨</span><span>Buy pet</span>
+      </button>
+    </div>
+    <div id="buy-pet-toast" class="toast"></div>
+  </div>
+</div>
+<div id="buy-world-modal" aria-hidden="true">
+  <div id="buy-world-card" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="buy-world-title" style="width:min(560px,94vw);">
+    <div style="display:flex;align-items:flex-start;">
+      <h2 id="buy-world-title">🌍 Buy a new world</h2>
+      <span style="flex:1 1 auto;"></span>
+      <button class="close-btn" id="buy-world-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <p style="color:#555;font-size:14px;margin:6px 0 12px;">
+      A new world starts with 3–5 cloned NPC pets. Pick a name and upload a background image — large images
+      will be resized automatically.
+    </p>
+    <div class="buy-row">
+      <div class="buy-field" style="flex:2 1 240px;">
+        <label for="buy-world-name">World name</label>
+        <input id="buy-world-name" type="text" maxlength="48" placeholder="My world" value="My world">
+      </div>
+      <div class="buy-field" style="flex:1 1 220px;">
+        <label for="buy-world-file">Background image</label>
+        <input id="buy-world-file" type="file" accept="image/png,image/jpeg" required>
+      </div>
+    </div>
+    <div class="buy-row">
+      <div class="buy-field" style="flex:1 1 100%;">
+        <label for="buy-world-music">Background music (optional)</label>
+        <select id="buy-world-music"><option value="">No music</option></select>
+      </div>
+    </div>
+    <div class="buy-stage" id="buy-world-preview" style="background:#dbe3f0;height:160px;">
+      <span style="color:#7c8aa3;">No image selected</span>
+    </div>
+    <div class="buy-actions">
+      <span class="buy-cost" id="buy-world-cost-line">
+        Costs <img src="/static-sprites/magicoin/coin.png" alt=""> <strong id="buy-world-cost-amount" style="color:#6495ed;">250</strong> magicoin (you have <strong id="buy-world-balance">0</strong>)
+      </span>
+      <button id="buy-world-submit" class="recycle-btn" type="button" disabled>
+        <span aria-hidden="true">✨</span><span>Create world</span>
+      </button>
+    </div>
+    <div id="buy-world-toast" class="toast"></div>
+  </div>
+</div>
+<div id="pet-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div style="display:flex;align-items:flex-start;">
+      <h2 id="modal-title">
+        <span id="modal-shiny" style="display:none;color:#d4a72c;" title="Shiny">★</span>
+        <span id="modal-name">Pet</span>
+        <small id="modal-type" style="color:#666;font-weight:600;font-size:14px;margin-left:6px;"></small>
+        <span id="modal-star" class="star" style="display:none;" title="Captured">★</span>
+      </h2>
+      <span style="flex:1 1 auto;"></span>
+      <button class="close-btn" id="modal-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-stage"><canvas id="modal-canvas" width="600" height="300"></canvas></div>
+    <div class="modal-actions">
+      <span id="modal-recycle-note" class="recycle-note">Capture this pet once to unlock transformation.</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="modal-release" class="recycle-btn" type="button" style="background:#7a9bd7;box-shadow:0 4px 12px rgba(70,90,130,0.32);">
+          <span aria-hidden="true">🕊️</span><span>Release pet</span>
+        </button>
+        <button id="modal-recycle" class="recycle-btn" type="button" disabled>
+          <span aria-hidden="true">✨</span><span>Transform into this pet</span>
+        </button>
+      </div>
+    </div>
+    <div class="recycle-note" style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+      Costs <img src="/static-sprites/magicoin/coin.png" alt="" style="width:16px;height:16px;object-fit:contain;"> <strong id="modal-transform-cost" style="color:#6495ed;">250</strong> magicoin per transform.
+    </div>
+    <div class="recycle-note" style="margin-top:4px;display:flex;align-items:center;gap:6px;">
+      Release value: <img src="/static-sprites/magicoin/coin.png" alt="" style="width:16px;height:16px;object-fit:contain;"> <strong id="modal-release-value" style="color:#4f78c4;">0</strong>
+    </div>
+    <div id="modal-toast" class="toast"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  var grid = document.getElementById("grid");
+  var emptyEl = document.getElementById("empty");
+  var capturedCountEl = document.getElementById("captured-count");
+  var correctEl = document.getElementById("correct-answers");
+  var nameEl = document.getElementById("player-name");
+  var magicoinEl = document.getElementById("magicoin");
+  var potionBtn = document.getElementById("potion-btn");
+  var potionStatus = document.getElementById("potion-status");
+  var potionCostEl = document.getElementById("potion-cost");
+  var maxHpBtn = document.getElementById("max-hp-btn");
+  var maxHpStatus = document.getElementById("max-hp-status");
+  var maxHpCostEl = document.getElementById("max-hp-cost");
+  var maxHpAmountEl = document.getElementById("max-hp-boost-amount");
+  var maxHpCapInfo = document.getElementById("max-hp-cap-info");
+  var currentBalance = 0;
+  var currentHealth = 100;
+  var maxHealth = 100;
+  var maxHealthCap = 500;
+  var potionCost = 20;
+  var maxHpBoostCost = 50;
+  var maxHpBoostAmount = 25;
+  var backpackEventSfx = {};
+  var sfxVolBackpack = 35;
+  var screenMusicCfg = {};
+  var musicVolBackpack = 25;
+  var screenMusicAudio = null;
+  var SCREEN_MUSIC_LS_KEY = "mmo_muted_v1";
+  var AUDIO_SESSION_KEY = "mmo_audio_session_v1";
+
+  function isMutedPersisted() {
+    try {
+      var v = localStorage.getItem(SCREEN_MUSIC_LS_KEY);
+      if (v === "0") return false;
+      if (v === "1") return true;
+    } catch (e) {}
+    // Default to unmuted when no persisted choice exists.
+    return false;
+  }
+
+  function applyScreenMusic(key) {
+    if (screenMusicAudio) {
+      try { screenMusicAudio.pause(); } catch (e) {}
+      screenMusicAudio = null;
+    }
+    if (window.__backpackEmbedded) return;
+    var cfg = (screenMusicCfg && screenMusicCfg[key]) || {};
+    if (!cfg.url || isMutedPersisted()) return;
+    var rel = Number(cfg.vol);
+    if (!isFinite(rel)) rel = 100;
+    var globalMv = Number(musicVolBackpack);
+    if (!isFinite(globalMv)) globalMv = 25;
+    var a = new Audio(cfg.url);
+    a.loop = true;
+    a.volume = Math.min(1, (globalMv / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+    screenMusicAudio = a;
+  }
+
+  // Retry until music starts if autoplay is blocked.
+  var screenMusicAutoplayFallbackAttached = false;
+  function attachScreenMusicAutoplayFallback() {
+    if (screenMusicAutoplayFallbackAttached) return;
+    screenMusicAutoplayFallbackAttached = true;
+    function onFirstUserGesture() {
+      if (!screenMusicAudio) return;
+      if (isMutedPersisted()) return;
+      try {
+        var cleanup = function () {
+          document.removeEventListener("pointerdown", onFirstUserGesture);
+          document.removeEventListener("touchstart", onFirstUserGesture);
+          document.removeEventListener("click", onFirstUserGesture);
+          document.removeEventListener("keydown", onFirstUserGesture);
+        };
+        var p = screenMusicAudio.play();
+        if (p && typeof p.then === "function") {
+          p.then(cleanup).catch(function () {});
+        } else if (!screenMusicAudio.paused) {
+          cleanup();
+        }
+      } catch (e) {}
+    }
+    document.addEventListener("pointerdown", onFirstUserGesture, { passive: true });
+    document.addEventListener("touchstart", onFirstUserGesture, { passive: true });
+    document.addEventListener("click", onFirstUserGesture);
+    document.addEventListener("keydown", onFirstUserGesture);
+  }
+  attachScreenMusicAutoplayFallback();
+  function playShopSfx() {
+    var cfg = backpackEventSfx.shop;
+    if (!cfg || !cfg.file) return;
+    var rel = Math.max(0, Math.min(100, Number(cfg.vol))) || 100;
+    var a = new Audio("/sfx/" + encodeURIComponent(cfg.file));
+    a.volume = Math.min(1, (sfxVolBackpack / 100) * (rel / 100));
+    var p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+  function updatePotionButton() {
+    if (!potionBtn) return;
+    var canAfford = currentBalance >= potionCost;
+    var needsHealing = currentHealth < maxHealth;
+    potionBtn.disabled = !canAfford || !needsHealing;
+    if (!needsHealing) potionStatus.textContent = "You're already at full health.";
+    else if (!canAfford) potionStatus.textContent = "Not enough magicoin (need " + potionCost + ").";
+    else potionStatus.textContent = "";
+    potionStatus.className = "toast";
+  }
+
+  function updateMaxHpButton() {
+    if (!maxHpBtn) return;
+    var atCap = maxHealth >= maxHealthCap;
+    var canAfford = currentBalance >= maxHpBoostCost;
+    maxHpBtn.disabled = atCap || !canAfford;
+    if (maxHpCostEl) maxHpCostEl.textContent = String(maxHpBoostCost);
+    if (maxHpAmountEl) maxHpAmountEl.textContent = String(maxHpBoostAmount);
+    if (maxHpCapInfo) {
+      maxHpCapInfo.textContent =
+        "(" + maxHealth + "/" + maxHealthCap + " max)";
+    }
+    if (atCap) maxHpStatus.textContent = "You've already maxed out HP.";
+    else if (!canAfford) maxHpStatus.textContent = "Not enough magicoin (need " + maxHpBoostCost + ").";
+    else maxHpStatus.textContent = "";
+    maxHpStatus.className = "toast";
+  }
+
+  function updateHealthDisplay() {
+    var txt = document.getElementById("health-text");
+    var fill = document.getElementById("health-fill");
+    if (txt) {
+      txt.textContent = String(currentHealth) + " / " + String(maxHealth) + " HP";
+    }
+    if (fill) {
+      var maxHp = Math.max(1, Number(maxHealth) || 1);
+      var hp = Math.max(0, Math.min(maxHp, Number(currentHealth) || 0));
+      var pct = (hp / maxHp) * 100;
+      fill.style.width = pct.toFixed(1) + "%";
+      var color =
+        pct > 60
+          ? "linear-gradient(90deg,#1f9a43,#5fbf66)"
+          : pct > 25
+            ? "linear-gradient(90deg,#d4a72c,#f0c75e)"
+            : "linear-gradient(90deg,#a31f1f,#d13d3d)";
+      fill.style.background = color;
+    }
+  }
+
+  var modal = document.getElementById("pet-modal");
+  var modalName = document.getElementById("modal-name");
+  var modalStar = document.getElementById("modal-star");
+  var modalTransformCostEl = document.getElementById("modal-transform-cost");
+  var modalReleaseValueEl = document.getElementById("modal-release-value");
+  var modalCanvas = document.getElementById("modal-canvas");
+  var modalCtx = modalCanvas.getContext("2d");
+  var modalRecycleBtn = document.getElementById("modal-recycle");
+  var modalReleaseBtn = document.getElementById("modal-release");
+  var modalRecycleNote = document.getElementById("modal-recycle-note");
+  var modalToast = document.getElementById("modal-toast");
+  var modalCloseBtn = document.getElementById("modal-close");
+
+  var imgCache = {};
+  function cacheImg(url) {
+    if (!url) return null;
+    if (imgCache[url]) return imgCache[url];
+    var im = new Image();
+    im.src = url;
+    imgCache[url] = im;
+    return im;
+  }
+
+  var THRESHOLD = 1;
+  var transformCost = 250;
+  var activePet = null;
+  var stageState = null;
+  var rafId = 0;
+
+  function resizeStageCanvas() {
+    var rect = modalCanvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    modalCanvas.width = Math.max(200, Math.floor(rect.width * dpr));
+    modalCanvas.height = Math.max(150, Math.floor(rect.height * dpr));
+    modalCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function startStage(pet) {
+    stageState = {
+      sprite: pet.sprite_url || "",
+      attackSprite: pet.attack_sprite_url || "",
+      size: Math.max(40, Math.min(220, Number(pet.size_px) || 80)),
+      walkPhase: 0,
+      facing: 1,
+      shiny: !!pet.shiny,
+      mode: "walk",
+      modeUntil: performance.now() + 1400 + Math.random() * 800,
+      attackUntil: 0,
+      attackSeqAt: 0,
+      lastTs: performance.now()
+    };
+    cacheImg(stageState.sprite);
+    if (stageState.attackSprite) cacheImg(stageState.attackSprite);
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(stepStage);
+  }
+
+  function stepStage(ts) {
+    if (!stageState) return;
+    var dt = Math.min(0.05, (ts - stageState.lastTs) / 1000);
+    stageState.lastTs = ts;
+    if (ts >= stageState.modeUntil) {
+      var roll = Math.random();
+      if (roll < 0.45) {
+        stageState.mode = "walk";
+        stageState.modeUntil = ts + 1100 + Math.random() * 1400;
+      } else if (roll < 0.7) {
+        stageState.mode = "pause";
+        stageState.modeUntil = ts + 700 + Math.random() * 900;
+      } else if (roll < 0.85) {
+        stageState.mode = "turn";
+        stageState.facing = -stageState.facing;
+        stageState.modeUntil = ts + 350;
+      } else {
+        if (stageState.attackSprite) {
+          stageState.mode = "attack";
+          stageState.attackUntil = ts + 480;
+          stageState.modeUntil = ts + 480;
+        } else {
+          stageState.mode = "pause";
+          stageState.modeUntil = ts + 500;
+        }
+      }
+    }
+    if (stageState.mode === "walk") stageState.walkPhase += dt * 9;
+    else if (stageState.mode === "turn") stageState.walkPhase = 0;
+    drawStage(ts);
+    rafId = requestAnimationFrame(stepStage);
+  }
+
+  function drawStage(ts) {
+    var w = modalCanvas.clientWidth;
+    var h = modalCanvas.clientHeight;
+    modalCtx.clearRect(0, 0, w, h);
+    modalCtx.fillStyle = "#fff";
+    modalCtx.fillRect(0, 0, w, h);
+
+    var ground = h * 0.78;
+    var size = stageState.size;
+    var attacking = stageState.mode === "attack" && ts < stageState.attackUntil;
+    var url = attacking && stageState.attackSprite ? stageState.attackSprite : stageState.sprite;
+    var im = url ? imgCache[url] : null;
+
+    var dw = size;
+    var dh = size;
+    if (im && im.complete && im.naturalWidth > 0) {
+      dh = size * (im.naturalHeight / im.naturalWidth);
+    }
+    var hw = dw / 2;
+    var hh = dh / 2;
+    var cx = w / 2;
+    var cy = ground - hh;
+
+    var wobble = stageState.mode === "walk" ? Math.abs(Math.sin(stageState.walkPhase)) : 0;
+    var squashY = 1 - 0.11 * wobble;
+    var squashX = 1 + 0.07 * wobble;
+    var atkScaleX = 1;
+    if (attacking) {
+      var u = (stageState.attackUntil - ts) / 480;
+      var phase = 1 - Math.max(0, Math.min(1, u));
+      atkScaleX = 1 + 0.18 * Math.sin(phase * Math.PI);
+    }
+
+    // shadow
+    modalCtx.save();
+    modalCtx.fillStyle = "rgba(0,0,0,0.18)";
+    modalCtx.beginPath();
+    modalCtx.ellipse(cx, ground + 3, hw * 0.85, hh * 0.18, 0, 0, Math.PI * 2);
+    modalCtx.fill();
+    modalCtx.restore();
+
+    modalCtx.save();
+    modalCtx.translate(cx, cy);
+    modalCtx.scale(squashX * stageState.facing * atkScaleX, squashY);
+    if (stageState.shiny) {
+      try {
+        modalCtx.filter = "sepia(0.85) saturate(2.6) hue-rotate(-12deg) brightness(1.1)";
+      } catch (e) {}
+    }
+    if (im && im.complete && im.naturalWidth > 0) {
+      modalCtx.drawImage(im, -hw, -hh, dw, dh);
+    } else {
+      modalCtx.fillStyle = "#dbe3f0";
+      modalCtx.fillRect(-hw, -hh, dw, dh);
+      modalCtx.fillStyle = "#7c8aa3";
+      modalCtx.textAlign = "center";
+      modalCtx.textBaseline = "middle";
+      modalCtx.font = "16px sans-serif";
+      modalCtx.fillText("?", 0, 0);
+    }
+    try { modalCtx.filter = "none"; } catch (e) {}
+    modalCtx.restore();
+
+    if (stageState.shiny) {
+      var t = ts / 1000;
+      var sparkles = ["✨", "⭐", "🌟"];
+      for (var si = 0; si < 3; si++) {
+        var phase = si * (Math.PI * 2 / 3) + t * 1.4;
+        var rx = hw * 1.05;
+        var ry = hh * 0.85;
+        var ox = Math.cos(phase) * rx;
+        var oy = Math.sin(phase * 1.3) * ry * 0.45;
+        var sz = 22 + 4 * Math.sin(t * 3 + si);
+        modalCtx.save();
+        modalCtx.font = sz + "px sans-serif";
+        modalCtx.textAlign = "center";
+        modalCtx.textBaseline = "middle";
+        modalCtx.shadowColor = "rgba(212,167,44,0.6)";
+        modalCtx.shadowBlur = 6;
+        modalCtx.fillText(sparkles[si % sparkles.length], cx + ox, cy + oy);
+        modalCtx.restore();
+      }
+    }
+  }
+
+  function openPetModal(pet, countInfo) {
+    activePet = pet;
+    var count = Number(countInfo && countInfo.variant);
+    if (!Number.isFinite(count)) count = 0;
+    var instName = pet.instance_name || "";
+    var typeName = pet.pet_name || "Pet";
+    modalName.textContent = instName || typeName;
+    var typeEl = document.getElementById("modal-type");
+    if (typeEl) typeEl.textContent = instName ? "(" + typeName + ")" : "";
+    var shinyEl = document.getElementById("modal-shiny");
+    if (shinyEl) shinyEl.style.display = pet.shiny ? "inline" : "none";
+    modalToast.textContent = "";
+    modalToast.className = "toast";
+    var releaseValue = Math.max(0, Number(pet.release_magicoin || 0) || 0);
+    if (modalReleaseValueEl) modalReleaseValueEl.textContent = String(releaseValue);
+    var unlocked = count >= THRESHOLD;
+    modalStar.style.display = "none";
+    if (modalReleaseBtn) modalReleaseBtn.disabled = false;
+    modalRecycleBtn.disabled = !unlocked;
+    modalRecycleNote.textContent = unlocked
+      ? "Captured at least once — transformation unlocked."
+      : "Capture this pet once to unlock transformation.";
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    setTimeout(function () {
+      resizeStageCanvas();
+      startStage(pet);
+    }, 0);
+  }
+
+  function closeModal() {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    cancelAnimationFrame(rafId);
+    rafId = 0;
+    stageState = null;
+    activePet = null;
+  }
+
+  modalCloseBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
+  window.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+  });
+
+  modalRecycleBtn.addEventListener("click", function () {
+    if (!activePet) return;
+    modalRecycleBtn.disabled = true;
+    var fd = new FormData();
+    fd.append("pet_id", String(activePet.pet_id));
+    fd.append("shiny", activePet.shiny ? "1" : "0");
+    fetch("/api/recycle/pet", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          modalToast.className = "toast bad";
+          if (data && data.error === "not_enough_captures") {
+            modalToast.textContent = "Capture this pet once to unlock transformation.";
+          } else if (data && data.error === "insufficient_magicoin") {
+            modalToast.textContent = "Not enough magicoin (need " + transformCost + ").";
+          } else {
+            modalToast.textContent = "Could not transform.";
+          }
+          modalRecycleBtn.disabled = false;
+          return;
+        }
+        if (typeof data.magicoin === "number") {
+          currentBalance = data.magicoin;
+          if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+          updatePotionButton();
+        }
+        modalToast.className = "toast";
+        modalToast.textContent = "Transformed! Head back to the game to see it.";
+        playShopSfx();
+        setTimeout(closeModal, 900);
+      })
+      .catch(function () {
+        modalToast.className = "toast bad";
+        modalToast.textContent = "Could not transform.";
+        modalRecycleBtn.disabled = false;
+      });
+  });
+
+  if (modalReleaseBtn) {
+    modalReleaseBtn.addEventListener("click", function () {
+      if (!activePet || !activePet.id) return;
+      if (!confirm("Release this pet permanently from your backpack?")) return;
+      modalReleaseBtn.disabled = true;
+      modalRecycleBtn.disabled = true;
+      fetch("/api/captures/" + encodeURIComponent(String(activePet.id)) + "/release", {
+        method: "POST",
+        credentials: "same-origin"
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) {
+            modalToast.className = "toast bad";
+            modalToast.textContent = "Could not release pet.";
+            modalReleaseBtn.disabled = false;
+            modalRecycleBtn.disabled = false;
+            return;
+          }
+          if (typeof data.magicoin === "number") {
+            currentBalance = data.magicoin;
+            if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+            updatePotionButton();
+            updateMaxHpButton();
+          }
+          var payout = Math.max(0, Number(data.payout || 0) || 0);
+          modalToast.className = "toast";
+          modalToast.textContent = "Released for +" + payout + " magicoin.";
+          playShopSfx();
+          setTimeout(function () {
+            closeModal();
+            load();
+          }, 400);
+        })
+        .catch(function () {
+          modalToast.className = "toast bad";
+          modalToast.textContent = "Could not release pet.";
+          modalReleaseBtn.disabled = false;
+          modalRecycleBtn.disabled = false;
+        });
+    });
+  }
+
+  if (maxHpBtn) {
+    maxHpBtn.addEventListener("click", function () {
+      maxHpBtn.disabled = true;
+      maxHpStatus.className = "toast";
+      maxHpStatus.textContent = "Boosting…";
+      fetch("/api/shop/max-hp", { method: "POST", credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) {
+            maxHpStatus.className = "toast bad";
+            if (data && data.error === "insufficient_magicoin") maxHpStatus.textContent = "Not enough magicoin.";
+            else if (data && data.error === "at_cap") maxHpStatus.textContent = "Already at max HP cap.";
+            else maxHpStatus.textContent = "Could not boost max HP.";
+            updateMaxHpButton();
+            return;
+          }
+          currentBalance = Number(data.magicoin || currentBalance);
+          maxHealth = Number(data.max_health || maxHealth);
+          currentHealth = Number(data.health || currentHealth);
+          if (data.max_health_cap) maxHealthCap = Number(data.max_health_cap);
+          if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+          maxHpStatus.className = "toast";
+          maxHpStatus.textContent = "Max HP boosted! Now " + maxHealth + " HP.";
+          playShopSfx();
+          updatePotionButton();
+          updateMaxHpButton();
+          updateHealthDisplay();
+        })
+        .catch(function () {
+          maxHpStatus.className = "toast bad";
+          maxHpStatus.textContent = "Could not boost max HP.";
+          updateMaxHpButton();
+        });
+    });
+  }
+
+  if (potionBtn) {
+    potionBtn.addEventListener("click", function () {
+      potionBtn.disabled = true;
+      potionStatus.className = "toast";
+      potionStatus.textContent = "Buying…";
+      fetch("/api/shop/health-potion", { method: "POST", credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || !data.ok) {
+            potionStatus.className = "toast bad";
+            if (data && data.error === "insufficient_magicoin") potionStatus.textContent = "Not enough magicoin.";
+            else if (data && data.error === "already_full") potionStatus.textContent = "You're already at full health.";
+            else potionStatus.textContent = "Could not buy potion.";
+            updatePotionButton();
+            return;
+          }
+          currentBalance = Number(data.magicoin || currentBalance);
+          currentHealth = Number(data.health || maxHealth);
+          if (Number(data.max_health)) maxHealth = Number(data.max_health);
+          if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+          potionStatus.className = "toast";
+          potionStatus.textContent = "Healed up!";
+          playShopSfx();
+          updatePotionButton();
+          updateMaxHpButton();
+          updateHealthDisplay();
+        })
+        .catch(function () {
+          potionStatus.className = "toast bad";
+          potionStatus.textContent = "Could not buy potion.";
+          updatePotionButton();
+        });
+    });
+  }
+
+  function load() {
+    fetch("/api/backpack", { credentials: "same-origin" })
+      .then(function (r) {
+        if (r.status === 401) { location.href = "/login"; return null; }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        nameEl.textContent = data.username || "";
+        correctEl.textContent = String(data.correct_answers || 0);
+        currentBalance = Number(data.magicoin || 0);
+        currentHealth = Number(data.health || 100);
+        maxHealth = Number(data.max_health || 100);
+        if (data.shop && data.shop.health_potion_cost) {
+          potionCost = Number(data.shop.health_potion_cost);
+          if (potionCostEl) potionCostEl.textContent = String(potionCost);
+        }
+        if (data.shop && Number(data.shop.max_hp_boost_cost)) {
+          maxHpBoostCost = Number(data.shop.max_hp_boost_cost);
+        }
+        if (data.shop && Number(data.shop.max_hp_boost_amount)) {
+          maxHpBoostAmount = Number(data.shop.max_hp_boost_amount);
+        }
+        if (data.shop && Number(data.shop.transform_cost)) {
+          transformCost = Number(data.shop.transform_cost);
+          if (modalTransformCostEl) modalTransformCostEl.textContent = String(transformCost);
+        }
+        if (Number(data.max_health_cap)) {
+          maxHealthCap = Number(data.max_health_cap);
+        } else if (data.shop && Number(data.shop.max_hp_cap)) {
+          maxHealthCap = Number(data.shop.max_hp_cap);
+        }
+        backpackEventSfx = data.event_sfx || {};
+        sfxVolBackpack = Number(data.sfx_volume);
+        if (!Number.isFinite(sfxVolBackpack)) sfxVolBackpack = 35;
+        musicVolBackpack = Number(data.music_volume);
+        if (!Number.isFinite(musicVolBackpack)) musicVolBackpack = 25;
+        screenMusicCfg = data.screen_music || {};
+        applyScreenMusic("backpack");
+        if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+        updatePotionButton();
+        updateMaxHpButton();
+        updateHealthDisplay();
+        var caps = data.captures || [];
+        var counts = data.counts || {};
+        var countsByVariant = data.counts_by_variant || {};
+        var countsByTier = data.counts_by_tier || {};
+        capturedCountEl.textContent = String(caps.length);
+        if (!caps.length) {
+          emptyEl.style.display = "block";
+          grid.innerHTML = "";
+          return;
+        }
+        emptyEl.style.display = "none";
+        grid.innerHTML = "";
+        caps.forEach(function (c) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "cell" + (c.shiny ? " shiny" : "");
+          var imgStyle = c.shiny
+            ? ' style="filter:sepia(.85) saturate(2.6) hue-rotate(-12deg) brightness(1.1);"'
+            : "";
+          var img = c.sprite_url
+            ? '<img src="' + escapeHtml(c.sprite_url) + '" alt=""' + imgStyle + '>'
+            : '<div class="placeholder">?</div>';
+          var titleHtml =
+            '<div class="name" style="font-weight:700;">'
+              + (c.shiny ? '<span title="Shiny" style="color:#d4a72c;">★ </span>' : '')
+              + escapeHtml(c.instance_name || c.pet_name)
+            + '</div>';
+          var subHtml = c.instance_name
+            ? '<div class="sub" style="color:#888;font-size:11px;">' + escapeHtml(c.pet_name) + '</div>'
+            : '';
+          btn.innerHTML = img + titleHtml + subHtml;
+          btn.addEventListener("click", function () {
+            var key = String(c.pet_id) + ":" + (c.shiny ? "1" : "0");
+            var n = Number(countsByVariant[key]);
+            if (!Number.isFinite(n)) n = Number(counts[c.pet_id] || 0);
+            var total = Number(counts[c.pet_id] || 0);
+            var regular = Number(countsByTier[String(c.pet_id) + ":regular"] || 0);
+            var golden = Number(countsByTier[String(c.pet_id) + ":golden"] || 0);
+            openPetModal(c, {
+              variant: n,
+              total: total,
+              regular: regular,
+              golden: golden
+            });
+          });
+          grid.appendChild(btn);
+        });
+      });
+  }
+
+  window.addEventListener("resize", function () {
+    if (modal.classList.contains("open")) resizeStageCanvas();
+    if (buyModal && buyModal.classList.contains("open")) resizeBuyStage();
+  });
+
+  // ===== Buy a new pet flow =====
+  var buyModal = document.getElementById("buy-pet-modal");
+  var buyOpenBtn = document.getElementById("open-buy-pet-btn");
+  var buyCloseBtn = document.getElementById("buy-pet-close");
+  var buySubmitBtn = document.getElementById("buy-pet-submit");
+  var buyToast = document.getElementById("buy-pet-toast");
+  var buyNameEl = document.getElementById("buy-pet-name");
+  var buyWorldEl = document.getElementById("buy-pet-world");
+  var buyCostLabel = document.getElementById("buy-pet-cost-label");
+  var buyCostAmount = document.getElementById("buy-cost-amount");
+  var buyBalanceEl = document.getElementById("buy-balance");
+  var buySizeEl = document.getElementById("buy-size");
+  var buySizeNum = document.getElementById("buy-size-num");
+  var buyFileSprite = document.getElementById("buy-file-sprite");
+  var buyFileAttack = document.getElementById("buy-file-attack");
+  var buyThumbSprite = document.getElementById("buy-thumb-sprite");
+  var buyThumbAttack = document.getElementById("buy-thumb-attack");
+  var buyAttackSfxEl = document.getElementById("buy-attack-sfx");
+  var buyAttackSfxVolEl = document.getElementById("buy-attack-sfx-vol");
+  var buyAttackSfxVolNum = document.getElementById("buy-attack-sfx-vol-num");
+  var buyAttackSfxDemo = document.getElementById("buy-attack-sfx-demo");
+  var buyStage = document.getElementById("buy-stage-canvas");
+  var buyStageCtx = buyStage.getContext("2d");
+  var buyOptions = { cost: 150, size_min: 25, size_max: 175, magicoin: 0, worlds: [] };
+  var buyState = {
+    sprite: { orig: null, processed: null, flipped: false, trimWhite: false, trimEmpty: false },
+    attack: { orig: null, processed: null, flipped: false, trimWhite: false, trimEmpty: false },
+    walk: { phase: 0, mode: "walk", modeUntil: 0, attackUntil: 0, facing: 1, lastTs: 0 },
+    rafId: 0
+  };
+
+  function resizeBuyStage() {
+    var rect = buyStage.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    buyStage.width = Math.max(200, Math.floor(rect.width * dpr));
+    buyStage.height = Math.max(150, Math.floor(rect.height * dpr));
+    buyStageCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function loadBuyOptions() {
+    return fetch("/api/shop/pet/options", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d) return;
+        buyOptions = d;
+        if (buyCostLabel) buyCostLabel.textContent = String(d.cost);
+        if (buyCostAmount) buyCostAmount.textContent = String(d.cost);
+        if (buyBalanceEl) buyBalanceEl.textContent = String(d.magicoin || 0);
+        if (buySizeEl) {
+          buySizeEl.min = String(d.size_min);
+          buySizeEl.max = String(d.size_max);
+          var defSize = Math.round((Number(d.size_min) + Number(d.size_max)) / 2);
+          buySizeEl.value = String(defSize);
+          if (buySizeNum) buySizeNum.textContent = defSize + " px";
+        }
+        var opts = (d.worlds || []).map(function (w) {
+          return '<option value="' + w.id + '">' + escapeHtml(w.name) + "</option>";
+        }).join("");
+        buyWorldEl.innerHTML = opts || '<option value="1">Default</option>';
+        updateBuyAffordability();
+        return loadBuyAttackSfxList();
+      });
+  }
+
+  function loadBuyAttackSfxList() {
+    if (!buyAttackSfxEl) return Promise.resolve();
+    return fetch("/api/sfx/list", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : { files: [] }; })
+      .then(function (d) {
+        var files = (d && d.files) || [];
+        var html = '<option value="">(none)</option>';
+        for (var i = 0; i < files.length; i++) {
+          html +=
+            '<option value="' + escapeHtml(files[i]) + '">' +
+            escapeHtml(files[i]) +
+            "</option>";
+        }
+        buyAttackSfxEl.innerHTML = html;
+      })
+      .catch(function () {});
+  }
+
+  if (buyAttackSfxVolEl && buyAttackSfxVolNum) {
+    buyAttackSfxVolEl.addEventListener("input", function () {
+      buyAttackSfxVolNum.textContent = buyAttackSfxVolEl.value + "%";
+    });
+  }
+  if (buyAttackSfxDemo) {
+    buyAttackSfxDemo.addEventListener("click", function () {
+      var fname = buyAttackSfxEl ? buyAttackSfxEl.value : "";
+      if (!fname) return;
+      var rel = Number(buyAttackSfxVolEl ? buyAttackSfxVolEl.value : 100);
+      if (!isFinite(rel)) rel = 100;
+      var globalSfx = Number(sfxVolBackpack);
+      if (!isFinite(globalSfx)) globalSfx = 35;
+      var a = new Audio("/sfx/" + encodeURIComponent(fname));
+      a.volume = Math.min(1, (globalSfx / 100) * (rel / 100));
+      var p = a.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    });
+  }
+
+  function updateBuyAffordability() {
+    var canAfford = Number(buyOptions.magicoin || 0) >= Number(buyOptions.cost || 0);
+    var hasSprite = !!(buyState.sprite.processed);
+    buySubmitBtn.disabled = !canAfford || !hasSprite;
+    if (buyCostLabel) buyCostLabel.textContent = String(buyOptions.cost || 150);
+    var costEl = document.getElementById("buy-cost-line");
+    if (costEl) costEl.classList.toggle("bad", !canAfford);
+  }
+
+  function readImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) { resolve(null); return; }
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error("bad image")); };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function processImage(slot) {
+    if (!slot.orig) { slot.processed = null; return; }
+    var src = slot.orig;
+    var canvas = document.createElement("canvas");
+    canvas.width = src.naturalWidth;
+    canvas.height = src.naturalHeight;
+    var c = canvas.getContext("2d");
+    if (slot.flipped) {
+      c.translate(canvas.width, 0);
+      c.scale(-1, 1);
+    }
+    c.drawImage(src, 0, 0);
+
+    if (slot.trimWhite || slot.trimEmpty) {
+      var data = c.getImageData(0, 0, canvas.width, canvas.height).data;
+      var minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
+      for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+          var i = (y * canvas.width + x) * 4;
+          var r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          var keep = false;
+          if (slot.trimEmpty && a < 6) {
+            keep = false;
+          } else if (slot.trimWhite && r > 240 && g > 240 && b > 240) {
+            keep = false;
+          } else {
+            keep = true;
+          }
+          if (keep) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (maxX > minX && maxY > minY) {
+        var w2 = maxX - minX + 1;
+        var h2 = maxY - minY + 1;
+        var c2 = document.createElement("canvas");
+        c2.width = w2;
+        c2.height = h2;
+        var ctx2 = c2.getContext("2d");
+        ctx2.drawImage(canvas, minX, minY, w2, h2, 0, 0, w2, h2);
+        canvas = c2;
+      }
+    }
+    slot.processed = canvas;
+  }
+
+  function renderThumb(slot, thumbEl) {
+    while (thumbEl.firstChild) thumbEl.removeChild(thumbEl.firstChild);
+    if (!slot.processed) {
+      var ph = document.createElement("span");
+      ph.textContent = "🖼️";
+      thumbEl.appendChild(ph);
+      return;
+    }
+    var url = slot.processed.toDataURL();
+    var img = document.createElement("img");
+    img.src = url;
+    thumbEl.appendChild(img);
+  }
+
+  function setupSlotControls(role, fileEl, thumbEl, flipId, trimWhiteId, trimEmptyId) {
+    var slot = buyState[role];
+    fileEl.addEventListener("change", function () {
+      var f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      readImageFile(f).then(function (img) {
+        slot.orig = img;
+        slot.flipped = false;
+        slot.trimWhite = false;
+        slot.trimEmpty = false;
+        document.getElementById(flipId).classList.remove("active");
+        document.getElementById(trimWhiteId).classList.remove("active");
+        document.getElementById(trimEmptyId).classList.remove("active");
+        processImage(slot);
+        renderThumb(slot, thumbEl);
+        updateBuyAffordability();
+      }).catch(function () {});
+    });
+    document.getElementById(flipId).addEventListener("click", function () {
+      if (!slot.orig) return;
+      slot.flipped = !slot.flipped;
+      this.classList.toggle("active", slot.flipped);
+      processImage(slot);
+      renderThumb(slot, thumbEl);
+    });
+    document.getElementById(trimWhiteId).addEventListener("click", function () {
+      if (!slot.orig) return;
+      slot.trimWhite = !slot.trimWhite;
+      this.classList.toggle("active", slot.trimWhite);
+      processImage(slot);
+      renderThumb(slot, thumbEl);
+    });
+    document.getElementById(trimEmptyId).addEventListener("click", function () {
+      if (!slot.orig) return;
+      slot.trimEmpty = !slot.trimEmpty;
+      this.classList.toggle("active", slot.trimEmpty);
+      processImage(slot);
+      renderThumb(slot, thumbEl);
+    });
+  }
+  setupSlotControls("sprite", buyFileSprite, buyThumbSprite, "buy-flip-sprite", "buy-trim-white-sprite", "buy-trim-empty-sprite");
+  setupSlotControls("attack", buyFileAttack, buyThumbAttack, "buy-flip-attack", "buy-trim-white-attack", "buy-trim-empty-attack");
+
+  function resetBuySlot(role, fileEl, thumbEl, flipId, trimWhiteId, trimEmptyId) {
+    var slot = buyState[role];
+    slot.orig = null;
+    slot.processed = null;
+    slot.flipped = false;
+    slot.trimWhite = false;
+    slot.trimEmpty = false;
+    try { fileEl.value = ""; } catch (e) {}
+    document.getElementById(flipId).classList.remove("active");
+    document.getElementById(trimWhiteId).classList.remove("active");
+    document.getElementById(trimEmptyId).classList.remove("active");
+    renderThumb(slot, thumbEl);
+  }
+  function resetBuyComposer() {
+    resetBuySlot("sprite", buyFileSprite, buyThumbSprite, "buy-flip-sprite", "buy-trim-white-sprite", "buy-trim-empty-sprite");
+    resetBuySlot("attack", buyFileAttack, buyThumbAttack, "buy-flip-attack", "buy-trim-white-attack", "buy-trim-empty-attack");
+    updateBuyAffordability();
+  }
+
+  buySizeEl.addEventListener("input", function () {
+    if (buySizeNum) buySizeNum.textContent = buySizeEl.value + " px";
+  });
+
+  function stepBuyStage(ts) {
+    if (!buyModal.classList.contains("open")) return;
+    var ws = buyState.walk;
+    if (!ws.lastTs) ws.lastTs = ts;
+    var dt = Math.min(0.05, (ts - ws.lastTs) / 1000);
+    ws.lastTs = ts;
+    if (ts >= ws.modeUntil) {
+      var roll = Math.random();
+      if (roll < 0.45) {
+        ws.mode = "walk";
+        ws.modeUntil = ts + 1100 + Math.random() * 1300;
+      } else if (roll < 0.7) {
+        ws.mode = "pause";
+        ws.modeUntil = ts + 700 + Math.random() * 800;
+      } else if (roll < 0.85) {
+        ws.mode = "turn";
+        ws.facing = -ws.facing;
+        ws.modeUntil = ts + 280;
+      } else {
+        if (buyState.attack.processed) {
+          ws.mode = "attack";
+          ws.attackUntil = ts + 480;
+          ws.modeUntil = ts + 480;
+        } else {
+          ws.mode = "pause";
+          ws.modeUntil = ts + 500;
+        }
+      }
+    }
+    if (ws.mode === "walk") ws.phase += dt * 9;
+    drawBuyStage(ts);
+    buyState.rafId = requestAnimationFrame(stepBuyStage);
+  }
+
+  function drawBuyStage(ts) {
+    var w = buyStage.clientWidth;
+    var h = buyStage.clientHeight;
+    buyStageCtx.clearRect(0, 0, w, h);
+    var grd = buyStageCtx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, "#dff5dc");
+    grd.addColorStop(1, "#a8d6a4");
+    buyStageCtx.fillStyle = grd;
+    buyStageCtx.fillRect(0, 0, w, h);
+
+    var ground = h * 0.78;
+    var ws = buyState.walk;
+    var size = Number(buySizeEl.value) || 80;
+    var attacking = ws.mode === "attack" && ts < ws.attackUntil;
+    var src = attacking && buyState.attack.processed ? buyState.attack.processed : buyState.sprite.processed;
+    if (!src) {
+      buyStageCtx.fillStyle = "#456";
+      buyStageCtx.font = "16px sans-serif";
+      buyStageCtx.textAlign = "center";
+      buyStageCtx.textBaseline = "middle";
+      buyStageCtx.fillText("Upload a sprite to preview", w / 2, h / 2);
+      return;
+    }
+    var dw = size;
+    var dh = size * (src.height / src.width);
+    var hw = dw / 2;
+    var hh = dh / 2;
+    var cx = w / 2;
+    var cy = ground - hh;
+
+    var wobble = ws.mode === "walk" ? Math.abs(Math.sin(ws.phase)) : 0;
+    var squashY = 1 - 0.11 * wobble;
+    var squashX = 1 + 0.07 * wobble;
+    var atkScaleX = 1;
+    if (attacking) {
+      var u = (ws.attackUntil - ts) / 480;
+      var phase = 1 - Math.max(0, Math.min(1, u));
+      atkScaleX = 1 + 0.18 * Math.sin(phase * Math.PI);
+    }
+    buyStageCtx.save();
+    buyStageCtx.fillStyle = "rgba(0,0,0,0.18)";
+    buyStageCtx.beginPath();
+    buyStageCtx.ellipse(cx, ground + 3, hw * 0.85, hh * 0.18, 0, 0, Math.PI * 2);
+    buyStageCtx.fill();
+    buyStageCtx.restore();
+    buyStageCtx.save();
+    buyStageCtx.translate(cx, cy);
+    buyStageCtx.scale(squashX * ws.facing * atkScaleX, squashY);
+    buyStageCtx.drawImage(src, -hw, -hh, dw, dh);
+    buyStageCtx.restore();
+  }
+
+  function openBuyModal() {
+    buyToast.textContent = "";
+    buyToast.className = "toast";
+    resetBuyComposer();
+    buyModal.classList.add("open");
+    buyModal.setAttribute("aria-hidden", "false");
+    loadBuyOptions().then(function () {
+      setTimeout(function () {
+        resizeBuyStage();
+        buyState.walk.lastTs = 0;
+        cancelAnimationFrame(buyState.rafId);
+        buyState.rafId = requestAnimationFrame(stepBuyStage);
+      }, 0);
+    });
+  }
+  function closeBuyModal() {
+    buyModal.classList.remove("open");
+    buyModal.setAttribute("aria-hidden", "true");
+    cancelAnimationFrame(buyState.rafId);
+    buyState.rafId = 0;
+  }
+  if (buyOpenBtn) buyOpenBtn.addEventListener("click", openBuyModal);
+  if (buyCloseBtn) buyCloseBtn.addEventListener("click", closeBuyModal);
+  if (buyModal) buyModal.addEventListener("click", function (e) {
+    if (e.target === buyModal) closeBuyModal();
+  });
+
+  function canvasToBlob(canvas, type) {
+    return new Promise(function (resolve) {
+      if (canvas.toBlob) canvas.toBlob(function (blob) { resolve(blob); }, type || "image/png");
+      else {
+        var url = canvas.toDataURL(type || "image/png");
+        fetch(url).then(function (r) { return r.blob(); }).then(resolve);
+      }
+    });
+  }
+
+  buySubmitBtn.addEventListener("click", function () {
+    if (buySubmitBtn.disabled) return;
+    if (!buyState.sprite.processed) {
+      buyToast.className = "toast bad";
+      buyToast.textContent = "Please upload a primary sprite image.";
+      return;
+    }
+    buySubmitBtn.disabled = true;
+    buyToast.className = "toast";
+    buyToast.textContent = "Buying…";
+    var jobs = [canvasToBlob(buyState.sprite.processed, "image/png")];
+    if (buyState.attack.processed) jobs.push(canvasToBlob(buyState.attack.processed, "image/png"));
+    else jobs.push(Promise.resolve(null));
+    Promise.all(jobs).then(function (blobs) {
+      var fd = new FormData();
+      fd.append("name", String(buyNameEl.value || "Pet").trim().slice(0, 24) || "Pet");
+      fd.append("world_id", String(buyWorldEl.value || "1"));
+      fd.append("size_px", String(buySizeEl.value || "80"));
+      fd.append("attack_sfx_file", buyAttackSfxEl ? String(buyAttackSfxEl.value || "") : "");
+      fd.append(
+        "attack_sfx_volume_pct",
+        String(buyAttackSfxVolEl ? Number(buyAttackSfxVolEl.value || 100) : 100)
+      );
+      if (blobs[0]) fd.append("sprite", blobs[0], "sprite.png");
+      if (blobs[1]) fd.append("attack_sprite", blobs[1], "attack.png");
+      return fetch("/api/shop/pet", { method: "POST", credentials: "same-origin", body: fd });
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (!data || !data.ok) {
+        buyToast.className = "toast bad";
+        if (data && data.error === "insufficient_magicoin") buyToast.textContent = "Not enough magicoin (need " + (data.cost || 150) + ").";
+        else if (data && data.error === "no_such_world") buyToast.textContent = "That world no longer exists.";
+        else if (data && data.error === "bad_image") buyToast.textContent = "Primary image was rejected.";
+        else if (data && data.error === "bad_attack_image") buyToast.textContent = "Attack image was rejected.";
+        else buyToast.textContent = "Could not buy pet.";
+        buySubmitBtn.disabled = false;
+        return;
+      }
+      currentBalance = Number(data.magicoin || currentBalance);
+      buyOptions.magicoin = currentBalance;
+      if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+      if (buyBalanceEl) buyBalanceEl.textContent = String(currentBalance);
+      buyToast.className = "toast";
+      buyToast.textContent = "Pet purchased! Find it in the chosen world.";
+      playShopSfx();
+      setTimeout(function () { closeBuyModal(); }, 1100);
+    }).catch(function () {
+      buyToast.className = "toast bad";
+      buyToast.textContent = "Could not buy pet.";
+      buySubmitBtn.disabled = false;
+    });
+  });
+
+  // ===== Buy a new world flow =====
+  var buyWorldModal = document.getElementById("buy-world-modal");
+  var buyWorldOpenBtn = document.getElementById("open-buy-world-btn");
+  var buyWorldCloseBtn = document.getElementById("buy-world-close");
+  var buyWorldSubmitBtn = document.getElementById("buy-world-submit");
+  var buyWorldNameEl = document.getElementById("buy-world-name");
+  var buyWorldFileEl = document.getElementById("buy-world-file");
+  var buyWorldPreview = document.getElementById("buy-world-preview");
+  var buyWorldCostAmount = document.getElementById("buy-world-cost-amount");
+  var buyWorldCostLabel = document.getElementById("buy-world-cost-label");
+  var buyWorldBalanceEl = document.getElementById("buy-world-balance");
+  var buyWorldCostLine = document.getElementById("buy-world-cost-line");
+  var buyWorldToast = document.getElementById("buy-world-toast");
+  var buyWorldMusicEl = document.getElementById("buy-world-music");
+  var buyWorldOptions = { cost: 250, magicoin: 0 };
+  var buyWorldFile = null;
+
+  function populateBuyWorldMusicSelect() {
+    if (!buyWorldMusicEl) return Promise.resolve();
+    return fetch("/api/worlds/music/list", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var files = (d && d.files) || [];
+        buyWorldMusicEl.innerHTML = '<option value="">No music</option>';
+        for (var i = 0; i < files.length; i++) {
+          var o = document.createElement("option");
+          o.value = files[i];
+          o.textContent = files[i];
+          buyWorldMusicEl.appendChild(o);
+        }
+        buyWorldMusicEl.value = "";
+      });
+  }
+
+  function loadWorldOptions() {
+    return fetch("/api/worlds", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d) return;
+        buyWorldOptions.cost = Number(d.cost_create || 250);
+        buyWorldOptions.magicoin = Number(d.magicoin || 0);
+        if (buyWorldCostLabel) buyWorldCostLabel.textContent = String(buyWorldOptions.cost);
+        if (buyWorldCostAmount) buyWorldCostAmount.textContent = String(buyWorldOptions.cost);
+        if (buyWorldBalanceEl) buyWorldBalanceEl.textContent = String(buyWorldOptions.magicoin);
+        updateBuyWorldAffordability();
+      });
+  }
+  function updateBuyWorldAffordability() {
+    var canAfford = Number(buyWorldOptions.magicoin || 0) >= Number(buyWorldOptions.cost || 0);
+    var hasFile = !!buyWorldFile;
+    buyWorldSubmitBtn.disabled = !canAfford || !hasFile;
+    if (buyWorldCostLine) buyWorldCostLine.classList.toggle("bad", !canAfford);
+  }
+  function setBuyWorldPreview(file) {
+    while (buyWorldPreview.firstChild) buyWorldPreview.removeChild(buyWorldPreview.firstChild);
+    if (!file) {
+      var span = document.createElement("span");
+      span.style.color = "#7c8aa3";
+      span.textContent = "No image selected";
+      buyWorldPreview.appendChild(span);
+      return;
+    }
+    var img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    buyWorldPreview.appendChild(img);
+  }
+  if (buyWorldFileEl) buyWorldFileEl.addEventListener("change", function () {
+    var f = buyWorldFileEl.files && buyWorldFileEl.files[0];
+    buyWorldFile = f || null;
+    setBuyWorldPreview(buyWorldFile);
+    updateBuyWorldAffordability();
+  });
+  function openBuyWorldModal() {
+    buyWorldToast.textContent = "";
+    buyWorldToast.className = "toast";
+    buyWorldFile = null;
+    if (buyWorldFileEl) buyWorldFileEl.value = "";
+    setBuyWorldPreview(null);
+    buyWorldModal.classList.add("open");
+    buyWorldModal.setAttribute("aria-hidden", "false");
+    Promise.all([loadWorldOptions(), populateBuyWorldMusicSelect()]);
+  }
+  function closeBuyWorldModal() {
+    buyWorldModal.classList.remove("open");
+    buyWorldModal.setAttribute("aria-hidden", "true");
+  }
+  if (buyWorldOpenBtn) buyWorldOpenBtn.addEventListener("click", openBuyWorldModal);
+  if (buyWorldCloseBtn) buyWorldCloseBtn.addEventListener("click", closeBuyWorldModal);
+  if (buyWorldModal) buyWorldModal.addEventListener("click", function (e) {
+    if (e.target === buyWorldModal) closeBuyWorldModal();
+  });
+  buyWorldSubmitBtn.addEventListener("click", function () {
+    if (buyWorldSubmitBtn.disabled || !buyWorldFile) return;
+    buyWorldSubmitBtn.disabled = true;
+    buyWorldToast.className = "toast";
+    buyWorldToast.textContent = "Creating world…";
+    var fd = new FormData();
+    fd.append("name", String(buyWorldNameEl.value || "World").trim().slice(0, 48) || "World");
+    fd.append("file", buyWorldFile);
+    if (buyWorldMusicEl && buyWorldMusicEl.value) {
+      fd.append("music_file", buyWorldMusicEl.value);
+    }
+    fetch("/api/worlds", { method: "POST", credentials: "same-origin", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          buyWorldToast.className = "toast bad";
+          if (data && data.error === "insufficient_magicoin") {
+            buyWorldToast.textContent = "Not enough magicoin (need " + buyWorldOptions.cost + ").";
+          } else if (data && data.error === "bad_image") {
+            buyWorldToast.textContent = "Background image was rejected.";
+          } else if (data && data.error === "bad_music") {
+            buyWorldToast.textContent = "Invalid music selection.";
+          } else {
+            buyWorldToast.textContent = "Could not create world.";
+          }
+          buyWorldSubmitBtn.disabled = false;
+          return;
+        }
+        if (typeof data.magicoin === "number") {
+          currentBalance = data.magicoin;
+          if (magicoinEl) magicoinEl.textContent = String(currentBalance);
+        }
+        buyWorldToast.className = "toast";
+        buyWorldToast.textContent = "World created! Heading there now…";
+        playShopSfx();
+        var wid = data.world_id;
+        var enterFd = new FormData();
+        fetch("/api/worlds/" + wid + "/enter", { method: "POST", credentials: "same-origin", body: enterFd })
+          .then(function () {
+            window.location.href = "/play?_=" + Date.now();
+          })
+          .catch(function () {
+            window.location.href = "/play?_=" + Date.now();
+          });
+      })
+      .catch(function () {
+        buyWorldToast.className = "toast bad";
+        buyWorldToast.textContent = "Could not create world.";
+        buyWorldSubmitBtn.disabled = false;
+      });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

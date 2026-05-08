@@ -2,25 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in</title>
+<style>
+html,body{margin:0;padding:0;min-height:100%;font-family:sans-serif;color:#222;background:#0f1320;}
+body{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 16px;
+  box-sizing:border-box;
+  background-color:#0f1320;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+  position:relative;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:linear-gradient(180deg, rgba(15,20,32,0.35) 0%, rgba(15,20,32,0.55) 100%);
+  pointer-events:none;
+  z-index:0;
+}
+.login-shell{position:relative;z-index:1;width:min(560px,94vw);display:flex;flex-direction:column;gap:18px;}
+.login-card{
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 24px 60px rgba(0,0,0,0.35);
+  padding:24px 26px 22px;
+}
+.login-card h2{
+  margin:0 0 12px;
+  font-size:22px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#234;
+}
+.login-card .subtitle{
+  margin:-4px 0 14px;
+  color:#666;
+  font-size:14px;
+}
+.login-row{display:flex;flex-direction:column;gap:6px;margin:10px 0;}
+.login-row label{font-size:13px;font-weight:700;color:#456;text-transform:uppercase;letter-spacing:0.04em;}
+.login-row input[type="text"],
+.login-row input[type="password"],
+.login-row input[type="file"]{
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid #cbd2e0;
+  font-size:15px;
+  background:#fff;
+  font-family:inherit;
+  color:#222;
+}
+.login-row input[type="text"]:focus,
+.login-row input[type="password"]:focus,
+.login-row input[type="file"]:focus{
+  outline:none;
+  border-color:#6495ed;
+  box-shadow:0 0 0 3px rgba(100,149,237,0.25);
+}
+.login-actions{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.primary-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:11px 18px;
+  font-size:15px;
+  font-weight:800;
+  color:#fff;
+  background:#6495ed;
+  border:0;
+  border-radius:10px;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(100,149,237,0.35);
+  transition:transform .08s ease, background .15s ease, box-shadow .15s ease;
+  font-family:inherit;
+}
+.primary-btn:hover{background:#5483dc;box-shadow:0 6px 16px rgba(100,149,237,0.45);}
+.primary-btn:active{transform:translateY(1px);background:#4a78d2;}
+#msg{
+  background:rgba(255,255,255,0.95);
+  color:#234;
+  padding:10px 14px;
+  border-radius:12px;
+  font-weight:700;
+  text-align:center;
+  box-shadow:0 6px 18px rgba(0,0,0,0.18);
+  min-height:0;
+}
+#msg.bad{color:#a31f1f;background:#fde7e7;}
+#msg.ok{color:#1f6f33;background:#e6f5e9;}
+#msg:empty{display:none;}
+#login-mute{
+  position:fixed;
+  top:14px;
+  right:14px;
+  z-index:5;
+  background:rgba(255,255,255,0.92);
+  border:0;
+  border-radius:10px;
+  width:42px;
+  height:42px;
+  font-size:22px;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,0.25);
+}
+#login-mute:hover{background:#fff;}
+.login-card .small-row{display:flex;justify-content:space-between;align-items:center;color:#666;font-size:13px;}
+.login-card .small-row a{color:#6495ed;text-decoration:none;font-weight:700;}
+.login-card .small-row a:hover{text-decoration:underline;}
+</style>
 </head>
 <body>
-<p id="msg"></p>
+<button id="login-mute" type="button" title="Sound" aria-label="Sound toggle">🔇</button>
+<audio id="login-music" loop preload="auto"></audio>
+<div class="login-shell">
+  <p id="msg"></p>
 
-<h2>Log in</h2>
-<form method="post" action="/login">
-<p>Username <input name="username" required maxlength="32" autocomplete="username"></p>
-<p>Password <input name="password" type="password" required autocomplete="current-password"></p>
-<p><button type="submit">Log in</button></p>
-</form>
+  <div class="login-card">
+    <h2><span aria-hidden="true">🔑</span> Log in</h2>
+    <p class="subtitle">Welcome back. Enter your credentials to keep playing.</p>
+    <form method="post" action="/login">
+      <div class="login-row">
+        <label for="login-username">Username</label>
+        <input id="login-username" name="username" type="text" required maxlength="32" autocomplete="username">
+      </div>
+      <div class="login-row">
+        <label for="login-password">Password</label>
+        <input id="login-password" name="password" type="password" required autocomplete="current-password">
+      </div>
+      <div class="login-actions">
+        <button type="submit" class="primary-btn"><span aria-hidden="true">▶️</span><span>Log in</span></button>
+      </div>
+    </form>
+  </div>
 
-<h2>Register</h2>
-<form method="post" action="/register" enctype="multipart/form-data">
-<p>Username <input name="username" required maxlength="32" autocomplete="username"></p>
-<p>Password <input name="password" type="password" required minlength="4" autocomplete="new-password"></p>
-<p>Character picture (required) <input name="sprite" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required></p>
-<p><button type="submit">Create account</button></p>
-</form>
+  <div class="login-card">
+    <h2><span aria-hidden="true">🆕</span> Register</h2>
+    <p class="subtitle">Create an account and pick the picture for your character.</p>
+    <form method="post" action="/register" enctype="multipart/form-data">
+      <div class="login-row">
+        <label for="reg-username">Username</label>
+        <input id="reg-username" name="username" type="text" required maxlength="32" autocomplete="username">
+      </div>
+      <div class="login-row">
+        <label for="reg-password">Password</label>
+        <input id="reg-password" name="password" type="password" required minlength="4" autocomplete="new-password">
+      </div>
+      <div class="login-row">
+        <label for="reg-sprite">Character picture (required)</label>
+        <input id="reg-sprite" name="sprite" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required>
+      </div>
+      <div class="login-actions">
+        <button type="submit" class="primary-btn"><span aria-hidden="true">✨</span><span>Create account</span></button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -37,9 +182,84 @@
     short_name: "Username must be at least 2 characters.",
     server: "Something went wrong. Try again."
   };
-  if (ok) msg.textContent = "Account created. You can log in now.";
-  else if (err && map[err]) msg.textContent = map[err];
-  else if (err) msg.textContent = "Error: " + err;
+  if (ok) {
+    msg.textContent = "Account created. You can log in now.";
+    msg.className = "ok";
+  } else if (err && map[err]) {
+    msg.textContent = map[err];
+    msg.className = "bad";
+  } else if (err) {
+    msg.textContent = "Error: " + err;
+    msg.className = "bad";
+  }
+
+  var MUTE_LS_KEY = "mmo_muted_v1";
+  var AUDIO_SESSION_KEY = "mmo_audio_session_v1";
+  function readPersistedMute() {
+    try {
+      if (!sessionStorage.getItem(AUDIO_SESSION_KEY)) return true;
+      var v = localStorage.getItem(MUTE_LS_KEY);
+      if (v === "0") return false;
+      if (v === "1") return true;
+    } catch (e) {}
+    return true;
+  }
+  function writePersistedMute(m) {
+    try { localStorage.setItem(MUTE_LS_KEY, m ? "1" : "0"); } catch (e) {}
+  }
+  function markAudioSessionActive() {
+    try { sessionStorage.setItem(AUDIO_SESSION_KEY, "1"); } catch (e) {}
+  }
+
+  var muted = readPersistedMute();
+  var muteBtn = document.getElementById("login-mute");
+  var music = document.getElementById("login-music");
+  var musicVolPct = 100;
+  var musicGlobalPct = 25;
+  function updateMuteUi() {
+    if (!muteBtn) return;
+    muteBtn.textContent = muted ? "🔇" : "🔊";
+    muteBtn.title = muted ? "Sound muted (click to enable)" : "Sound on";
+  }
+  function applyMusicVolume() {
+    if (!music) return;
+    var v = (musicGlobalPct / 100) * (musicVolPct / 100);
+    music.volume = Math.max(0, Math.min(1, v));
+    if (muted) {
+      try { music.pause(); } catch (e) {}
+    } else if (music.src) {
+      var p = music.play();
+      if (p && typeof p.catch === "function") p.catch(function () {});
+    }
+  }
+  if (muteBtn) {
+    muteBtn.addEventListener("click", function () {
+      muted = !muted;
+      markAudioSessionActive();
+      writePersistedMute(muted);
+      updateMuteUi();
+      applyMusicVolume();
+    });
+  }
+  updateMuteUi();
+
+  fetch("/api/login-config", { credentials: "same-origin" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (cfg) {
+      if (!cfg) return;
+      if (cfg.background_url) {
+        document.body.style.backgroundImage = 'url("' + cfg.background_url + '")';
+      }
+      var v = Number(cfg.music_volume_pct);
+      if (Number.isFinite(v)) musicVolPct = Math.max(0, Math.min(100, v));
+      if (cfg.music_url && music) {
+        music.src = cfg.music_url;
+        music.preload = "auto";
+        music.loop = true;
+        applyMusicVolume();
+      }
+    })
+    .catch(function () {});
 })();
 </script>
 </body>
