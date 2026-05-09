@@ -1,6 +1,6 @@
 """
 Club MMO: FastAPI + sessions + SQLite users + WebSockets + sprite uploads.
-World background: static/bg/world.png or world.jpg (see /config).
+World background: static/bg/world.jpg or legacy world.png (see /config).
 
 Demo only: passwords are stored in SQLite as plain text. Never use that on a real site.
 """
@@ -1306,6 +1306,87 @@ def extension_for_kind(kind: str) -> str:
 
 WORLD_BG_MAX_WIDTH_PX = 1600
 WORLD_BG_LARGE_BYTES = 800 * 1024  # >800 KB triggers re-encode
+WORLD_BG_JPEG_QUALITY = 82
+WORLD_BG_PER_WORLD_PNG_RE = re.compile(r"^world_(\d+)\.png$", re.IGNORECASE)
+
+
+def _save_png_path_as_jpeg(png_path: Path, jpeg_path: Path) -> None:
+    """Encode a PNG file on disk as JPEG (RGB). Raises on unreadable input."""
+    with Image.open(png_path) as im:
+        im.load()
+        rgb = im.convert("RGB")
+        rgb.save(
+            jpeg_path,
+            format="JPEG",
+            quality=WORLD_BG_JPEG_QUALITY,
+            optimize=True,
+            progressive=True,
+        )
+
+
+def convert_png_world_backgrounds_to_jpeg() -> dict:
+    """Rewrite world background PNGs in static/bg as JPEGs and update the DB.
+
+    Handles legacy ``world.png`` → ``world.jpg`` and ``world_<id>.png`` rows in
+    ``worlds.background_file``. Other ``*.png`` files in that directory are left
+    untouched and reported as skipped.
+    """
+    bg_dir = STATIC_DIR / "bg"
+    bg_dir.mkdir(parents=True, exist_ok=True)
+    converted: list[dict[str, str | int]] = []
+    errors: list[str] = []
+    skipped: list[str] = []
+
+    conn = _connect_db()
+    try:
+        for png_path in sorted(bg_dir.glob("*.png")):
+            name = png_path.name
+            lower = name.lower()
+            if lower == "world.png":
+                jpeg_path = bg_dir / "world.jpg"
+                try:
+                    _save_png_path_as_jpeg(png_path, jpeg_path)
+                    png_path.unlink()
+                    converted.append({"from": name, "to": "world.jpg", "kind": "legacy"})
+                except (OSError, UnidentifiedImageError, ValueError) as e:
+                    errors.append(f"{name}: {e}")
+                continue
+
+            m = WORLD_BG_PER_WORLD_PNG_RE.fullmatch(name)
+            if not m:
+                skipped.append(name)
+                continue
+
+            wid = int(m.group(1))
+            jpeg_name = f"world_{wid}.jpg"
+            jpeg_path = bg_dir / jpeg_name
+            try:
+                _save_png_path_as_jpeg(png_path, jpeg_path)
+                conn.execute(
+                    "UPDATE worlds SET background_file = ? WHERE background_file = ?",
+                    (jpeg_name, name),
+                )
+                conn.commit()
+                png_path.unlink()
+                converted.append(
+                    {
+                        "from": name,
+                        "to": jpeg_name,
+                        "kind": "world",
+                        "world_id": wid,
+                    }
+                )
+            except (OSError, UnidentifiedImageError, ValueError) as e:
+                errors.append(f"{name}: {e}")
+    finally:
+        conn.close()
+
+    return {
+        "ok": len(errors) == 0,
+        "converted": converted,
+        "errors": errors,
+        "skipped": skipped,
+    }
 
 
 def maybe_shrink_world_background(body: bytes, kind: str) -> tuple[bytes, str]:
@@ -1334,7 +1415,13 @@ def maybe_shrink_world_background(body: bytes, kind: str) -> tuple[bytes, str]:
             if target.mode not in ("RGB", "L"):
                 target = target.convert("RGB")
             buf = io.BytesIO()
-            target.save(buf, format="JPEG", quality=82, optimize=True, progressive=True)
+            target.save(
+                buf,
+                format="JPEG",
+                quality=WORLD_BG_JPEG_QUALITY,
+                optimize=True,
+                progressive=True,
+            )
             return buf.getvalue(), "jpg"
     except (UnidentifiedImageError, OSError, ValueError):
         return body, kind
@@ -5391,6 +5478,17 @@ async def api_config_screen_music_save(
             raise HTTPException(status_code=400, detail="bad_screen")
         set_screen_music_pair(k, str(block.get("file") or ""), block.get("vol"))
     return {"ok": True, "screen_music": get_screen_music_config()}
+
+
+@app.post("/api/config/convert-world-background-png-to-jpeg")
+async def api_config_convert_world_background_png_to_jpeg(
+    user: sqlite3.Row = Depends(require_login),
+):
+    """Convert ``static/bg/world*.png`` backgrounds to JPEG and update DB references."""
+    result = convert_png_world_backgrounds_to_jpeg()
+    if result.get("converted"):
+        await notify_world_background_changed()
+    return result
 
 
 @app.get("/api/screen-music")

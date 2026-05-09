@@ -20,6 +20,11 @@ section{margin-bottom:2rem;}
 <section>
 <h2>Worlds</h2>
 <p>Each world has its own background and persistent NPC pets. <a href="/worlds">Open worlds chooser ↗</a></p>
+<p style="margin:0.5rem 0 0.75rem;font-size:0.95rem;color:#444;">PNG backgrounds use more disk than JPEG. Files named <code>world.png</code> or <code>world_&lt;id&gt;.png</code> under <code>static/bg/</code> can be converted in place; the database is updated for each world row.</p>
+<p style="margin:0 0 0.75rem;">
+<button type="button" id="convert-world-bg-png-btn">Convert PNG backgrounds to JPEG</button>
+<span id="convert-world-bg-png-status" style="margin-left:10px;color:#666;"></span>
+</p>
 <div id="worlds-box">Loading…</div>
 </section>
 
@@ -1430,6 +1435,69 @@ section{margin-bottom:2rem;}
         flash.textContent = "Could not delete world.";
       });
   };
+
+  var convertBgBtn = document.getElementById("convert-world-bg-png-btn");
+  var convertBgStatus = document.getElementById("convert-world-bg-png-status");
+  if (convertBgBtn) {
+    convertBgBtn.addEventListener("click", function () {
+      convertBgBtn.disabled = true;
+      if (convertBgStatus) {
+        convertBgStatus.style.color = "#666";
+        convertBgStatus.textContent = "Converting…";
+      }
+      fetch("/api/config/convert-world-background-png-to-jpeg", {
+        method: "POST",
+        credentials: "same-origin",
+      })
+        .then(function (r) {
+          if (r.status === 401) {
+            location.href = "/login";
+            return null;
+          }
+          return r.json();
+        })
+        .then(function (d) {
+          if (!d) return;
+          var n = Array.isArray(d.converted) ? d.converted.length : 0;
+          var errs = Array.isArray(d.errors) ? d.errors : [];
+          var sk = Array.isArray(d.skipped) ? d.skipped : [];
+          if (errs.length) {
+            flash.textContent =
+              "Some conversions failed (" +
+              errs.length +
+              "). See browser console for details.";
+            console.warn("convert-world-bg:", d);
+            if (convertBgStatus) {
+              convertBgStatus.style.color = "#b94a48";
+              convertBgStatus.textContent = errs[0] || "Error.";
+            }
+          } else {
+            var parts = [];
+            if (n) parts.push("Converted " + n + " file" + (n === 1 ? "" : "s") + " to JPEG.");
+            else parts.push("No matching PNG backgrounds found.");
+            if (sk.length)
+              parts.push("Skipped " + sk.length + " other PNG(s) in static/bg (unexpected names).");
+            flash.textContent = parts.join(" ");
+            if (convertBgStatus) {
+              convertBgStatus.style.color = "#1f9a43";
+              convertBgStatus.textContent = n ? "Done." : "Nothing to do.";
+            }
+          }
+          loadWorlds();
+          load();
+        })
+        .catch(function () {
+          flash.textContent = "Could not run conversion.";
+          if (convertBgStatus) {
+            convertBgStatus.style.color = "#b94a48";
+            convertBgStatus.textContent = "Request failed.";
+          }
+        })
+        .finally(function () {
+          convertBgBtn.disabled = false;
+        });
+    });
+  }
 
   loadSfxList();
   loadWorlds();
